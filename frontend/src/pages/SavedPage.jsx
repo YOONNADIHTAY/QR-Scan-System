@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { QRCodeCanvas } from 'qrcode.react';
-import { getProfiles, deleteProfile } from '../api';
+import { getProfiles, deleteProfile, setProfileActive } from '../api';
+import BrandedQr from '../components/BrandedQr';
 import usePublicBase from '../hooks/usePublicBase';
+import { useI18n } from '../I18nContext';
 import {
   IconEdit,
   IconExternal,
@@ -11,6 +12,7 @@ import {
   IconSearch,
   IconTrash,
 } from '../components/Icons';
+import { DEPARTMENT_OPTIONS } from '../constants/departments';
 
 function formatDate(value) {
   if (!value) return '—';
@@ -37,13 +39,35 @@ function typeClass(type) {
   return 'tag tag-profile';
 }
 
+/** Department field (falls back to role/title for older records) */
+function profileDepartment(p) {
+  return String(p.department || p.description || '').trim();
+}
+
+/** Shop / branch names on the QR */
+function profileBranchLabels(p) {
+  const fromBranches = (p.branches || [])
+    .map((b) => String(b.name || b.locationName || '').trim())
+    .filter(Boolean);
+  if (fromBranches.length) return fromBranches;
+  const shop = String(p.shopName || p.locationName || '').trim();
+  return shop ? [shop] : [];
+}
+
+function profileBranchText(p) {
+  const labels = profileBranchLabels(p);
+  return labels.length ? labels.join(', ') : '—';
+}
+
 export default function SavedPage() {
+  const { t } = useI18n();
   const { publicBase } = usePublicBase();
   const [profiles, setProfiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
+  const [departmentFilter, setDepartmentFilter] = useState('all');
   const [sortBy, setSortBy] = useState('newest');
   const [menuId, setMenuId] = useState(null);
 
@@ -71,12 +95,25 @@ export default function SavedPage() {
     return () => window.removeEventListener('click', close);
   }, []);
 
+  const departmentOptions = useMemo(() => {
+    const set = new Set(DEPARTMENT_OPTIONS);
+    profiles.forEach((p) => {
+      const d = profileDepartment(p);
+      if (d) set.add(d);
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [profiles]);
+
   const filtered = useMemo(() => {
     let list = [...profiles];
     const q = search.trim().toLowerCase();
 
     if (typeFilter !== 'all') {
       list = list.filter((p) => profileType(p) === typeFilter);
+    }
+
+    if (departmentFilter !== 'all') {
+      list = list.filter((p) => profileDepartment(p) === departmentFilter);
     }
 
     if (q) {
@@ -97,13 +134,19 @@ export default function SavedPage() {
 
     list.sort((a, b) => {
       if (sortBy === 'name') return (a.name || '').localeCompare(b.name || '');
+      if (sortBy === 'department') {
+        return profileDepartment(a).localeCompare(profileDepartment(b));
+      }
+      if (sortBy === 'branch') {
+        return profileBranchText(a).localeCompare(profileBranchText(b));
+      }
       const da = new Date(a.updatedAt || a.createdAt || 0).getTime();
       const db = new Date(b.updatedAt || b.createdAt || 0).getTime();
       return db - da;
     });
 
     return list;
-  }, [profiles, search, typeFilter, sortBy]);
+  }, [profiles, search, typeFilter, departmentFilter, sortBy]);
 
   async function handleDelete(id, name) {
     if (!window.confirm(`Delete "${name}"?`)) return;
@@ -116,22 +159,39 @@ export default function SavedPage() {
     }
   }
 
+  async function handleToggleActive(p) {
+    try {
+      const updated = await setProfileActive(p.id, !p.active);
+      setProfiles((prev) => prev.map((row) => (row.id === p.id ? updated : row)));
+      setMenuId(null);
+    } catch (err) {
+      alert(err.message);
+    }
+  }
+
   return (
     <div className="page-panel">
-      <div className="welcome-banner">
-        <h2>Welcome to 29 Jewellery QR Studio</h2>
-        <p>Create staff QR profiles and manage saved codes in one clean workspace.</p>
+      <div className="welcome-banner erp-hero">
+        <h2>{t('welcomeAdmin')}</h2>
+        <p>
+          Register staff, generate QR, edit/delete info, manage designs, and track scans.
+        </p>
       </div>
 
       <header className="page-toolbar">
         <div>
-          <h1 className="page-heading">My QR Codes</h1>
-          <p className="page-desc">{profiles.length} staff QR profile(s) saved</p>
+          <h1 className="page-heading">QR Registry</h1>
+          <p className="page-desc">
+            {profiles.length} {t('recordsOnFile')}
+          </p>
         </div>
         <div className="toolbar-actions">
+          <Link to="/users" className="btn btn-secondary">
+            Staff list
+          </Link>
           <Link to="/" className="btn btn-primary">
             <IconPlus />
-            Create QR Code
+            Generate staff QR
           </Link>
         </div>
       </header>
@@ -139,7 +199,7 @@ export default function SavedPage() {
       {error && <div className="error-banner">{error}</div>}
 
       <section className="panel-card">
-        <div className="filter-bar">
+        <div className="filter-bar filter-bar-erp">
           <label className="search-field">
             <IconSearch />
             <input
@@ -150,7 +210,11 @@ export default function SavedPage() {
             />
           </label>
 
-          <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} aria-label="QR type">
+          <select
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value)}
+            aria-label="QR type"
+          >
             <option value="all">All types</option>
             <option value="Profile">Profile</option>
             <option value="Social">Social</option>
@@ -158,9 +222,29 @@ export default function SavedPage() {
             <option value="Product">Product</option>
           </select>
 
+          <select defaultValue="all" aria-label="Branches">
+            <option value="all">Branches: All</option>
+          </select>
+
+          <select
+            className="filter-department"
+            value={departmentFilter}
+            onChange={(e) => setDepartmentFilter(e.target.value)}
+            aria-label="Departments"
+          >
+            <option value="all">Departments: All</option>
+            {departmentOptions.map((name) => (
+              <option key={name} value={name}>
+                {name}
+              </option>
+            ))}
+          </select>
+
           <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} aria-label="Sort by">
             <option value="newest">Newest</option>
             <option value="name">Name A–Z</option>
+            <option value="department">Department</option>
+            <option value="branch">Branch</option>
           </select>
         </div>
 
@@ -168,10 +252,10 @@ export default function SavedPage() {
           <div className="loading">Loading saved codes…</div>
         ) : !filtered.length ? (
           <div className="empty-panel">
-            <p>No QR codes match your filters.</p>
+            <p>No staff records match your filters.</p>
             <Link to="/" className="btn btn-primary">
               <IconPlus />
-              Create QR Code
+              New Record
             </Link>
           </div>
         ) : (
@@ -181,8 +265,11 @@ export default function SavedPage() {
                 <tr>
                   <th>QR</th>
                   <th>Name</th>
+                  <th>Branches</th>
+                  <th>Departments</th>
                   <th>Type</th>
-                  <th>Shop</th>
+                  <th>Scans</th>
+                  <th>Status</th>
                   <th>Created</th>
                   <th>Actions</th>
                 </tr>
@@ -192,35 +279,51 @@ export default function SavedPage() {
                   const type = profileType(p);
                   const scanUrl = `${publicBase}/scan/${p.id}`;
                   const open = menuId === p.id;
+                  const isActive = p.active !== false;
 
                   return (
                     <tr key={p.id}>
                       <td>
                         <div className="qr-thumb compact">
-                          <QRCodeCanvas
+                          <BrandedQr
+                            id={`saved-qr-${p.id}`}
                             value={scanUrl}
-                            size={44}
+                            size={48}
                             bgColor="#ffffff"
                             fgColor={p.qrFgColor || '#111111'}
-                            level="M"
+                            logoUrl={p.avatarUrl || ''}
+                            frame={p.qrFrame || 'none'}
                           />
                         </div>
                       </td>
                       <td>
                         <div className="table-name">
                           <strong>{p.name}</strong>
-                          {p.description && <small>{p.description}</small>}
+                          {p.personalEmail ? <small>{p.personalEmail}</small> : null}
                         </div>
+                      </td>
+                      <td>{profileBranchText(p)}</td>
+                      <td>
+                        {profileDepartment(p) ? (
+                          <span className="tag tag-branches">{profileDepartment(p)}</span>
+                        ) : (
+                          '—'
+                        )}
                       </td>
                       <td>
                         <span className={typeClass(type)}>{type}</span>
                       </td>
-                      <td>{p.shopName || '29 Jewellery'}</td>
+                      <td>{p.scanCount || 0}</td>
+                      <td>
+                        <span className={`tag ${isActive ? 'tag-profile' : 'tag-social'}`}>
+                          {isActive ? 'Active' : 'Inactive'}
+                        </span>
+                      </td>
                       <td>{formatDate(p.createdAt)}</td>
                       <td>
                         <div className="qr-actions table-actions">
                           <Link to={`/edit/${p.id}`} className="btn btn-detail">
-                            Detail
+                            Design
                           </Link>
                           <div className="more-wrap">
                             <button
@@ -237,11 +340,14 @@ export default function SavedPage() {
                             {open && (
                               <div className="more-menu" onClick={(e) => e.stopPropagation()}>
                                 <Link to={`/edit/${p.id}`}>
-                                  <IconEdit /> Edit
+                                  <IconEdit /> Edit info / design
                                 </Link>
                                 <a href={scanUrl} target="_blank" rel="noreferrer">
                                   <IconExternal /> Open scan
                                 </a>
+                                <button type="button" onClick={() => handleToggleActive(p)}>
+                                  {isActive ? 'Deactivate QR' : 'Activate QR'}
+                                </button>
                                 <button type="button" onClick={() => handleDelete(p.id, p.name)}>
                                   <IconTrash /> Delete
                                 </button>

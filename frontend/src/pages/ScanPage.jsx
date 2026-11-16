@@ -21,10 +21,42 @@ export default function ScanPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getProfile(id)
-      .then(setProfile)
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
+    if (!id) {
+      setError('Missing profile id');
+      setLoading(false);
+      return undefined;
+    }
+
+    let cancelled = false;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 20000);
+
+    setLoading(true);
+    setError('');
+    setProfile(null);
+
+    getProfile(id, { signal: controller.signal })
+      .then((data) => {
+        if (!cancelled) setProfile(data);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        if (err?.name === 'AbortError') {
+          setError('Scan page timed out. Tunnel may be slow or offline — open again in a moment.');
+        } else {
+          setError(err.message || 'Failed to load profile');
+        }
+      })
+      .finally(() => {
+        clearTimeout(timer);
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+      controller.abort();
+    };
   }, [id]);
 
   if (loading) return <div className="loading">Loading…</div>;
@@ -32,6 +64,9 @@ export default function ScanPage() {
     return (
       <div className="scan-page">
         <div className="error-banner">{error}</div>
+        <button className="btn btn-primary" type="button" onClick={() => window.location.reload()}>
+          Try again
+        </button>
       </div>
     );
   }

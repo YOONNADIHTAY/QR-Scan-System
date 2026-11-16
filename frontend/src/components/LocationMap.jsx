@@ -1,12 +1,24 @@
 import { useEffect, useState } from 'react';
+import { MapContainer, Marker, TileLayer } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import {
   geocodeAddress,
   toGoogleDirectionsQueryUrl,
   toGoogleDirectionsUrl,
   toGoogleMapsQueryUrl,
   toGoogleMapsUrl,
-  toStaticMapImageUrl,
 } from '../utils/maps';
+
+const markerIcon = L.icon({
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
+});
 
 export default function LocationMap({
   latitude,
@@ -64,33 +76,30 @@ export default function LocationMap({
   const directionsUrl = coords
     ? toGoogleDirectionsUrl(coords.lat, coords.lng)
     : toGoogleDirectionsQueryUrl(place);
-  const photoUrl = coords
-    ? toStaticMapImageUrl(coords.lat, coords.lng, { zoom: 16, width: 720, height: 420 })
-    : '';
 
   return (
     <div className="scan-location-map">
-      <a
-        className="scan-map-photo-link"
-        href={mapsUrl}
-        target="_blank"
-        rel="noreferrer"
-        aria-label="Open location in Google Maps"
-      >
-        {photoUrl ? (
-          <img
-            className="scan-map-photo"
-            src={photoUrl}
-            alt={place || 'Map location'}
-            loading="eager"
-          />
+      <div className="scan-map-classic">
+        {coords ? (
+          <MapContainer
+            key={`${coords.lat},${coords.lng}`}
+            center={[coords.lat, coords.lng]}
+            zoom={16}
+            scrollWheelZoom={false}
+            className="scan-leaflet-map"
+          >
+            <TileLayer
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
+            <Marker position={[coords.lat, coords.lng]} icon={markerIcon} />
+          </MapContainer>
         ) : (
           <div className={`scan-map-photo-fallback ${loading ? 'is-loading' : ''}`}>
-            <span>{loading ? 'Loading map…' : 'Open map'}</span>
+            <span>{loading ? 'Loading map…' : 'Map unavailable'}</span>
           </div>
         )}
-        <span className="scan-map-photo-badge">Google Maps</span>
-      </a>
+      </div>
 
       <div className="map-actions">
         {mapsUrl && (

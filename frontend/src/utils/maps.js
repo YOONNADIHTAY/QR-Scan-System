@@ -18,17 +18,36 @@ export function toGoogleDirectionsQueryUrl(query) {
   return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(q)}`;
 }
 
-export function toGoogleEmbedUrl(lat, lng, zoom = 16) {
-  return `https://www.google.com/maps?q=${lat},${lng}&z=${zoom}&output=embed`;
+export function toGoogleEmbedUrl(lat, lng, zoom = 17, satellite = true) {
+  const layer = satellite ? '&t=k' : '';
+  return `https://maps.google.com/maps?q=${lat},${lng}&z=${zoom}${layer}&hl=en&output=embed`;
 }
 
-export function toGoogleEmbedQueryUrl(query, zoom = 16) {
+export function toGoogleEmbedQueryUrl(query, zoom = 17, satellite = true) {
   const q = String(query || '').trim();
   if (!q) return '';
-  return `https://maps.google.com/maps?q=${encodeURIComponent(q)}&z=${zoom}&output=embed`;
+  const layer = satellite ? '&t=k' : '';
+  return `https://maps.google.com/maps?q=${encodeURIComponent(q)}&z=${zoom}${layer}&hl=en&output=embed`;
 }
 
-/** Photo-style static map image (no Google API key needed) */
+/** OpenStreetMap embed (works without API key) */
+export function toOsmEmbedUrl(lat, lng, zoom = 16) {
+  const la = Number(lat);
+  const ln = Number(lng);
+  if (Number.isNaN(la) || Number.isNaN(ln)) return '';
+  const delta = Math.max(0.004, 0.18 / 2 ** Math.max(zoom - 10, 0));
+  const west = ln - delta;
+  const south = la - delta * 0.7;
+  const east = ln + delta;
+  const north = la + delta * 0.7;
+  return (
+    `https://www.openstreetmap.org/export/embed.html` +
+    `?bbox=${west}%2C${south}%2C${east}%2C${north}` +
+    `&layer=mapnik&marker=${la}%2C${ln}`
+  );
+}
+
+/** Photo-style static map image fallbacks */
 export function toStaticMapImageUrl(lat, lng, { zoom = 16, width = 720, height = 420 } = {}) {
   const la = Number(lat);
   const ln = Number(lng);
@@ -43,17 +62,17 @@ export function toStaticMapImageUrl(lat, lng, { zoom = 16, width = 720, height =
 export async function geocodeAddress(query) {
   const q = String(query || '').trim();
   if (!q) return null;
-  const url =
-    `https://nominatim.openstreetmap.org/search?format=jsonv2` +
-    `&q=${encodeURIComponent(q)}&limit=1`;
-  const res = await fetch(url, { headers: { Accept: 'application/json' } });
-  if (!res.ok) return null;
-  const data = await res.json();
-  if (!Array.isArray(data) || !data[0]) return null;
-  const lat = Number(data[0].lat);
-  const lng = Number(data[0].lon);
-  if (Number.isNaN(lat) || Number.isNaN(lng)) return null;
-  return { lat, lng };
+  try {
+    const res = await fetch(`/api/geocode?q=${encodeURIComponent(q)}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const lat = Number(data?.lat);
+    const lng = Number(data?.lng);
+    if (Number.isNaN(lat) || Number.isNaN(lng)) return null;
+    return { lat, lng };
+  } catch {
+    return null;
+  }
 }
 
 /** Extract lat/lng from common Google Maps share / place URLs */

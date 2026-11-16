@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
-import { IconPhone, IconPlus, IconSearch, IconTrash } from './Icons';
-import { lookupJewelleryBranch } from '../utils/branchLookup';
+import { IconPhone, IconTrash } from './Icons';
 import { toGoogleMapsQueryUrl, toGoogleMapsUrl } from '../utils/maps';
 
 export function normalizeBranchPhones(branch) {
@@ -26,9 +25,6 @@ export function emptyBranch() {
 
 export default function BranchFields({ branch, index, onChange, onRemove, canRemove }) {
   const [query, setQuery] = useState(branch.name || '');
-  const [searching, setSearching] = useState(false);
-  const [results, setResults] = useState([]);
-  const [error, setError] = useState('');
   const phones = normalizeBranchPhones(branch);
 
   useEffect(() => {
@@ -44,43 +40,12 @@ export default function BranchFields({ branch, index, onChange, onRemove, canRem
     });
   }
 
-  function applyResult(item) {
-    const nextPhones = item.phone
-      ? [item.phone, ...phones.filter((p) => p.trim() && p.trim() !== item.phone)]
-      : phones;
+  function setArea(value) {
+    setQuery(value);
     onChange(index, {
       ...branch,
-      name: item.name || query.trim(),
-      phone: nextPhones.find((p) => p.trim()) || '',
-      phones: nextPhones.length ? nextPhones : [''],
-      address: item.address || '',
-      locationName: item.address || item.locationName || '',
-      latitude: item.latitude,
-      longitude: item.longitude,
-      googleMapLink: item.googleMapLink || '',
+      name: value.trim(),
     });
-    setQuery(item.name || query.trim());
-    setResults([]);
-    setError(item.phone ? '' : 'Address filled. Phone not found online — please type branch phone.');
-  }
-
-  async function findBranch() {
-    setSearching(true);
-    setError('');
-    setResults([]);
-    try {
-      const { results: list, error: err } = await lookupJewelleryBranch(query);
-      if (err) setError(err);
-      if (list.length === 1) {
-        applyResult(list[0]);
-      } else {
-        setResults(list);
-      }
-    } catch {
-      setError('Lookup failed. Try again.');
-    } finally {
-      setSearching(false);
-    }
   }
 
   return (
@@ -97,50 +62,8 @@ export default function BranchFields({ branch, index, onChange, onRemove, canRem
       <div className="form-grid">
         <div className="field">
           <label>Branch area</label>
-          <div className="location-search">
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  findBranch();
-                }
-              }}
-              placeholder="Tamwe"
-            />
-            <button
-              type="button"
-              className="btn btn-ghost"
-              disabled={searching || !query.trim()}
-              onClick={findBranch}
-            >
-              <IconSearch />
-              {searching ? '…' : 'Find'}
-            </button>
-          </div>
+          <input value={query} onChange={(e) => setArea(e.target.value)} />
         </div>
-
-        {results.length > 1 && (
-          <ul className="location-results">
-            {results.map((item, i) => (
-              <li key={`${item.latitude}-${item.longitude}-${i}`}>
-                <button type="button" onClick={() => applyResult(item)}>
-                  {item.label}
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-
-        {error && (
-          <p
-            className="hint"
-            style={{ color: error.includes('filled') ? 'var(--text-muted)' : 'var(--danger)' }}
-          >
-            {error}
-          </p>
-        )}
 
         <div className="field">
           <label>Address</label>
@@ -161,14 +84,22 @@ export default function BranchFields({ branch, index, onChange, onRemove, canRem
               });
             }}
             rows={3}
-            placeholder="Branch address"
           />
         </div>
 
         <div className="field field-phones">
-          <label>
-            <IconPhone /> Branch phone numbers
-          </label>
+          <div className="field-label-row">
+            <label>
+              <IconPhone /> Branch phone numbers
+            </label>
+            <button
+              type="button"
+              className="link-add-phone"
+              onClick={() => setPhones([...phones, ''])}
+            >
+              + Add phone
+            </button>
+          </div>
           <div className="phone-list">
             {phones.map((phone, phoneIndex) => (
               <div className="phone-row" key={`phone-${phoneIndex}`}>
@@ -180,7 +111,6 @@ export default function BranchFields({ branch, index, onChange, onRemove, canRem
                     next[phoneIndex] = e.target.value;
                     setPhones(next);
                   }}
-                  placeholder="+959 ..."
                 />
                 {phones.length > 1 && (
                   <button
@@ -194,13 +124,6 @@ export default function BranchFields({ branch, index, onChange, onRemove, canRem
                 )}
               </div>
             ))}
-            <button
-              type="button"
-              className="btn btn-ghost"
-              onClick={() => setPhones([...phones, ''])}
-            >
-              <IconPlus /> Add phone number
-            </button>
           </div>
         </div>
       </div>

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { createProfile, getProfile, updateProfile } from '../api';
 import BranchFields, { emptyBranch, normalizeBranchPhones } from '../components/BranchFields';
-import BrandedQr, { downloadBrandedQrPng } from '../components/BrandedQr';
+import BrandedQr, { QR_FRAMES, downloadBrandedQrPng } from '../components/BrandedQr';
 import {
   IconDownload,
   IconExternal,
@@ -11,14 +11,14 @@ import {
   IconMail,
   IconMap,
   IconPhone,
-  IconPhoto,
-  IconPlus,
   IconSave,
   IconStore,
   IconTikTok,
   IconYouTube,
 } from '../components/Icons';
 import usePublicBase from '../hooks/usePublicBase';
+import { isStaff } from '../auth';
+import { DEPARTMENT_OPTIONS } from '../constants/departments';
 
 const SHOP_NOS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
 
@@ -43,6 +43,7 @@ function formatShopName(name, shopNo) {
 const empty = {
   name: '',
   description: '',
+  department: '',
   personalPhone: '',
   personalEmail: '',
   includeShop: true,
@@ -54,6 +55,7 @@ const empty = {
   branches: [emptyBranch()],
   qrFgColor: '#111111',
   qrBgColor: '#ffffff',
+  qrFrame: 'none',
 };
 
 function normalizeBranches(p) {
@@ -87,9 +89,11 @@ function normalizeBranches(p) {
   ];
 }
 
-export default function GeneratePage() {
-  const { id } = useParams();
+export default function GeneratePage({ forcedId = null, staffMode = false }) {
+  const params = useParams();
+  const id = forcedId || params.id;
   const isEdit = Boolean(id);
+  const staffView = staffMode || isStaff();
   const navigate = useNavigate();
   const { publicBase, lanUrl, saveBaseUrl } = usePublicBase();
   const isPublicLink = /^https:\/\//i.test(publicBase);
@@ -129,6 +133,7 @@ export default function GeneratePage() {
         setForm({
           name: p.name || '',
           description: p.description || '',
+          department: p.department || p.description || '',
           personalPhone: p.personalPhone || '',
           personalEmail: p.personalEmail || '',
           includeShop: p.includeShop !== false,
@@ -140,6 +145,7 @@ export default function GeneratePage() {
           branches: normalizeBranches(p),
           qrFgColor: p.qrFgColor || '#111111',
           qrBgColor: p.qrBgColor || '#ffffff',
+          qrFrame: p.qrFrame || 'none',
         });
         setExistingPhotos(p.photos || []);
         setAvatarUrl(p.avatarUrl || '');
@@ -209,8 +215,12 @@ export default function GeneratePage() {
     downloadBrandedQrPng('preview-qr', `${form.name || 'qr'}-qr.png`);
   }
 
-  async function handleSubmit(e) {
-    e.preventDefault();
+  async function saveProfile() {
+    if (!form.name.trim()) {
+      setError('Name is required');
+      return null;
+    }
+
     setSaving(true);
     setError('');
 
@@ -218,6 +228,7 @@ export default function GeneratePage() {
       const fd = new FormData();
       fd.append('name', form.name.trim());
       fd.append('description', form.description);
+      fd.append('department', form.department);
       fd.append('personalPhone', form.personalPhone.trim());
       fd.append('personalEmail', form.personalEmail.trim());
       fd.append('includeShop', form.includeShop ? 'true' : 'false');
@@ -240,8 +251,18 @@ export default function GeneratePage() {
       fd.append('branches', JSON.stringify(branchesPayload));
       fd.append('qrFgColor', form.qrFgColor);
       fd.append('qrBgColor', form.qrBgColor);
+      fd.append('qrFrame', form.qrFrame || 'none');
       fd.append('removePhotoIds', JSON.stringify(removePhotoIds));
       fd.append('removeAvatar', removeAvatar ? 'true' : 'false');
+      if (!isEdit && !savedId && !staffView) {
+        // Email on the QR = Google Sign-In account (no separate staff password)
+        const googleEmail = (form.personalEmail || '').trim();
+        if (googleEmail) {
+          fd.append('createStaffLogin', 'true');
+          fd.append('staffEmail', googleEmail);
+          fd.append('staffPassword', 'google:pending');
+        }
+      }
       if (avatarFile) fd.append('avatar', avatarFile);
       newFiles.forEach((file) => fd.append('photos', file));
 
@@ -249,6 +270,10 @@ export default function GeneratePage() {
         isEdit || savedId
           ? await updateProfile(savedId || id, fd)
           : await createProfile(fd);
+
+      if (saved.staffLoginError) {
+        setError(`QR saved, but staff login failed: ${saved.staffLoginError}`);
+      }
 
       setSavedId(saved.id);
       setExistingPhotos(saved.photos || []);
@@ -260,14 +285,38 @@ export default function GeneratePage() {
       setRemovePhotoIds([]);
       setForm((prev) => ({
         ...prev,
+        description: saved.description ?? prev.description,
+        department: saved.department || saved.description || prev.department,
         qrFgColor: saved.qrFgColor || prev.qrFgColor,
         qrBgColor: saved.qrBgColor || prev.qrBgColor,
+        qrFrame: saved.qrFrame || prev.qrFrame,
       }));
-      navigate('/saved');
+      return saved;
     } catch (err) {
       setError(err.message);
+      return null;
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleGenerateQr(e) {
+    e?.preventDefault?.();
+    const saved = await saveProfile();
+    if (saved?.id) {
+      requestAnimationFrame(() => {
+        document.querySelector('.generate-side')?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start',
+        });
+      });
+    }
+  }
+
+  async function handleSaveQrToList() {
+    const saved = await saveProfile();
+    if (saved?.id) {
+      navigate(staffView ? '/my-qr' : '/saved');
     }
   }
 
@@ -275,24 +324,49 @@ export default function GeneratePage() {
 
   return (
     <div className="page-panel">
-      <div className="welcome-banner compact">
-        <h2>{isEdit ? 'Edit staff QR' : 'Create staff QR'}</h2>
-        <p>Personal information and 29 Jewellery shop details for the scan page.</p>
+      <div className="welcome-banner erp-hero">
+        <h2>
+          {staffView
+            ? 'My QR design'
+            : isEdit
+              ? 'Edit Staff Record'
+              : 'Create Staff Record'}
+        </h2>
+        <p>
+          {staffView
+            ? 'Update your details and customize your QR look.'
+            : 'Enter staff and shop details to generate a scan profile.'}
+        </p>
       </div>
       <header className="page-toolbar">
         <div>
-          <h1 className="page-heading">{isEdit ? 'Edit QR Code' : 'Create QR Code'}</h1>
-          <p className="page-desc">Fill personal + shop info, then save.</p>
+          <h1 className="page-heading">
+            {staffView ? 'Customize QR' : isEdit ? 'Edit Record' : 'New Record'}
+          </h1>
+          <p className="page-desc">
+            {staffView
+              ? 'Change photo, colors, and contact info for your QR card.'
+              : 'Complete the form, then save to issue the QR.'}
+          </p>
         </div>
         <div className="toolbar-actions">
-          <button type="submit" form="generate-form" className="btn btn-primary" disabled={saving}>
+          <button
+            type="button"
+            className="btn btn-primary"
+            disabled={saving}
+            onClick={handleSaveQrToList}
+          >
             <IconSave />
             {saving ? 'Saving…' : 'Save QR'}
           </button>
         </div>
       </header>
 
-      <form id="generate-form" className="generate-layout" onSubmit={handleSubmit}>
+      <form
+        id="generate-form"
+        className={`generate-layout${savedId ? '' : ' no-preview'}`}
+        onSubmit={handleGenerateQr}
+      >
       {error && <div className="error-banner generate-error">{error}</div>}
 
       <div className="generate-main">
@@ -304,8 +378,42 @@ export default function GeneratePage() {
             Personal information
           </h2>
           <div className="form-grid">
+            <div className="field full-span">
+              <label htmlFor="avatar">
+                Profile photo
+              </label>
+              <div className="file-pick">
+                <input
+                  id="avatar"
+                  className="file-input-hidden"
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] || null;
+                    setAvatarFile(file);
+                    setRemoveAvatar(false);
+                  }}
+                />
+                <label htmlFor="avatar" className="file-pick-btn">
+                  Choose File
+                </label>
+                {avatarFile?.name || (!removeAvatar && avatarUrl) ? (
+                  <span className="file-pick-name">
+                    {avatarFile?.name || 'Photo selected'}
+                  </span>
+                ) : null}
+              </div>
+              {logoSrc && (
+                <div className="avatar-preview-row">
+                  <img className="avatar-preview" src={logoSrc} alt="Profile" />
+                  <button type="button" className="btn btn-danger" onClick={clearAvatar}>
+                    Remove photo
+                  </button>
+                </div>
+              )}
+            </div>
             <div className="field">
-              <label htmlFor="name">Name *</label>
+              <label htmlFor="name">Name</label>
               <input
                 id="name"
                 required
@@ -314,12 +422,32 @@ export default function GeneratePage() {
               />
             </div>
             <div className="field">
+              <label htmlFor="department">Department</label>
+              <select
+                id="department"
+                className="field-select"
+                value={form.department}
+                onChange={(e) => setField('department', e.target.value)}
+                aria-label="Department"
+              >
+                <option value="">Select department</option>
+                {DEPARTMENT_OPTIONS.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+                {form.department &&
+                !DEPARTMENT_OPTIONS.includes(form.department) ? (
+                  <option value={form.department}>{form.department}</option>
+                ) : null}
+              </select>
+            </div>
+            <div className="field">
               <label htmlFor="description">Role / title</label>
               <input
                 id="description"
                 value={form.description}
                 onChange={(e) => setField('description', e.target.value)}
-                placeholder="Sales consultant"
               />
             </div>
             <div className="field">
@@ -331,7 +459,6 @@ export default function GeneratePage() {
                 type="tel"
                 value={form.personalPhone}
                 onChange={(e) => setField('personalPhone', e.target.value)}
-                placeholder="+959 ..."
               />
             </div>
             <div className="field">
@@ -342,35 +469,9 @@ export default function GeneratePage() {
                 id="personalEmail"
                 type="email"
                 value={form.personalEmail}
+                placeholder=""
                 onChange={(e) => setField('personalEmail', e.target.value)}
-                placeholder="name@example.com"
               />
-            </div>
-            <div className="field">
-              <label htmlFor="avatar">
-                <IconPhoto /> Profile photo (QR center)
-              </label>
-              <div className="file-row">
-                <input
-                  id="avatar"
-                  className="file-input"
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0] || null;
-                    setAvatarFile(file);
-                    setRemoveAvatar(false);
-                  }}
-                />
-              </div>
-              {logoSrc && (
-                <div className="avatar-preview-row">
-                  <img className="avatar-preview" src={logoSrc} alt="Profile" />
-                  <button type="button" className="btn btn-danger" onClick={clearAvatar}>
-                    Remove photo
-                  </button>
-                </div>
-              )}
             </div>
             <div className="field">
               <label htmlFor="facebook">
@@ -416,7 +517,7 @@ export default function GeneratePage() {
                 src="/29-jewellery-logo.png"
                 alt=""
               />
-              29 Jewellery shop information
+              Shop information
             </h2>
             <label className="section-toggle" htmlFor="includeShop">
               <input
@@ -482,100 +583,136 @@ export default function GeneratePage() {
                   />
                 ))}
               </div>
-              <button type="button" className="btn btn-ghost" onClick={addBranch}>
-                <IconPlus /> Add location
+              <button type="button" className="link-add-btn" onClick={addBranch}>
+                + Add location
               </button>
+
+              <div className="shop-products-block">
+                <h3 className="step-subtitle">Best-selling products</h3>
+                <div className="field">
+                  <input
+                    id="photos"
+                    className="file-input-hidden"
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={(e) => {
+                      const picked = Array.from(e.target.files || []);
+                      if (!picked.length) return;
+                      setNewFiles((prev) => [...prev, ...picked]);
+                      e.target.value = '';
+                    }}
+                  />
+                  {(existingPhotos.length > 0 || previews.length > 0) && (
+                    <>
+                      <p className="hint">
+                        {existingPhotos.length + previews.length} product(s)
+                      </p>
+                      <div className="photo-grid photo-grid-compact">
+                        {existingPhotos.map((p) => (
+                          <div className="photo-thumb" key={p.id}>
+                            <img
+                              src={p.url}
+                              alt={p.originalName || 'Best-selling product'}
+                            />
+                            <button type="button" onClick={() => markPhotoRemove(p.id)}>
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                        {previews.map((src, i) => (
+                          <div className="photo-thumb" key={`new-${i}`}>
+                            <img src={src} alt={`Best-selling product ${i + 1}`} />
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setNewFiles((prev) => prev.filter((_, idx) => idx !== i))
+                              }
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                  <button
+                    type="button"
+                    className="link-add-btn"
+                    style={{
+                      marginTop:
+                        existingPhotos.length || previews.length ? '0.55rem' : 0,
+                    }}
+                    onClick={() => document.getElementById('photos')?.click()}
+                  >
+                    + Add products
+                  </button>
+                </div>
+              </div>
             </>
           ) : (
             <p className="section-off-note">
               Shop information is off. Scan page will show personal info only.
             </p>
           )}
-        </section>
 
-        <section className="step-card">
-          <h2 className="step-title">Best-selling products</h2>
-          <div className="field">
-            <input
-              id="photos"
-              className="file-input-hidden"
-              type="file"
-              accept="image/*"
-              multiple
-              onChange={(e) => {
-                const picked = Array.from(e.target.files || []);
-                if (!picked.length) return;
-                setNewFiles((prev) => [...prev, ...picked]);
-                e.target.value = '';
-              }}
-            />
-            {(existingPhotos.length > 0 || previews.length > 0) && (
-              <>
-                <p className="hint">{existingPhotos.length + previews.length} product(s)</p>
-                <div className="photo-grid">
-                  {existingPhotos.map((p) => (
-                    <div className="photo-thumb" key={p.id}>
-                      <img src={p.url} alt={p.originalName || 'Best-selling product'} />
-                      <button type="button" onClick={() => markPhotoRemove(p.id)}>
-                        ×
-                      </button>
-                    </div>
-                  ))}
-                  {previews.map((src, i) => (
-                    <div className="photo-thumb" key={`new-${i}`}>
-                      <img src={src} alt={`Best-selling product ${i + 1}`} />
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setNewFiles((prev) => prev.filter((_, idx) => idx !== i))
-                        }
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
+          <div className="section-save-row">
             <button
               type="button"
-              className="btn btn-ghost"
-              style={{ marginTop: existingPhotos.length || previews.length ? '0.75rem' : 0 }}
-              onClick={() => document.getElementById('photos')?.click()}
+              className="btn btn-primary"
+              disabled={saving}
+              onClick={handleGenerateQr}
             >
-              <IconPlus /> Add products
+              <IconSave />
+              {saving ? 'Saving…' : 'Save'}
             </button>
           </div>
         </section>
       </div>
 
-      <aside className="generate-side">
-        <section className="step-card preview-card">
-          <h2 className="step-title">Customize & Save QR</h2>
+      {savedId && (
+        <aside className="generate-side">
+          <section className="step-card preview-card">
+            <h2 className="step-title">Customize & Save QR</h2>
 
-          <div className="qr-colors">
-            <div className="field">
-              <label htmlFor="qrFg">QR color</label>
-              <input
-                id="qrFg"
-                type="color"
-                value={form.qrFgColor}
-                onChange={(e) => setField('qrFgColor', e.target.value)}
-              />
+            <div className="qr-colors">
+              <div className="field">
+                <label htmlFor="qrFg">QR color</label>
+                <input
+                  id="qrFg"
+                  type="color"
+                  value={form.qrFgColor}
+                  onChange={(e) => setField('qrFgColor', e.target.value)}
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="qrBg">Background</label>
+                <input
+                  id="qrBg"
+                  type="color"
+                  value={form.qrBgColor}
+                  onChange={(e) => setField('qrBgColor', e.target.value)}
+                />
+              </div>
             </div>
-            <div className="field">
-              <label htmlFor="qrBg">Background</label>
-              <input
-                id="qrBg"
-                type="color"
-                value={form.qrBgColor}
-                onChange={(e) => setField('qrBgColor', e.target.value)}
-              />
-            </div>
-          </div>
 
-          <div className="qr-preview">
-            {scanUrl ? (
+            <div className="field" style={{ marginTop: '0.75rem' }}>
+              <span className="field-label">QR frame</span>
+              <div className="frame-picker">
+                {QR_FRAMES.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className={`frame-option ${form.qrFrame === item.id ? 'is-active' : ''}`}
+                    onClick={() => setField('qrFrame', item.id)}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="qr-preview">
               <BrandedQr
                 id="preview-qr"
                 value={scanUrl}
@@ -583,50 +720,38 @@ export default function GeneratePage() {
                 fgColor={form.qrFgColor}
                 bgColor={form.qrBgColor}
                 logoUrl={logoSrc}
+                frame={form.qrFrame}
               />
+            </div>
+
+            <p className="qr-url">{scanUrl}</p>
+            {isPublicLink ? (
+              <p className="hint">Works on any network (mobile data OK).</p>
             ) : (
-              <div className="qr-placeholder">Save to generate QR</div>
+              <p className="hint warn-hint">
+                Not a public link yet. Run the tunnel script, set PUBLIC_URL, then refresh.
+              </p>
             )}
-          </div>
-
-          {scanUrl && (
-            <>
-              <p className="qr-url">{scanUrl}</p>
-              {isPublicLink ? (
-                <p className="hint">Works on any network (mobile data OK).</p>
-              ) : (
-                <p className="hint warn-hint">
-                  Not a public link yet. Run the tunnel script, set PUBLIC_URL, then refresh.
-                </p>
-              )}
-              <div className="field">
-                <label htmlFor="qrBase">Phone URL base</label>
-                <div className="location-search">
-                  <input
-                    id="qrBase"
-                    value={publicBase}
-                    onChange={(e) => saveBaseUrl(e.target.value)}
-                  />
-                  {lanUrl && (
-                    <button
-                      type="button"
-                      className="btn btn-ghost"
-                      onClick={() => saveBaseUrl(lanUrl)}
-                    >
-                      WiFi IP
-                    </button>
-                  )}
-                </div>
+            <div className="field">
+              <label htmlFor="qrBase">Phone URL base</label>
+              <div className="location-search">
+                <input
+                  id="qrBase"
+                  value={publicBase}
+                  onChange={(e) => saveBaseUrl(e.target.value)}
+                />
+                {lanUrl && (
+                  <button
+                    type="button"
+                    className="btn btn-ghost"
+                    onClick={() => saveBaseUrl(lanUrl)}
+                  >
+                    WiFi IP
+                  </button>
+                )}
               </div>
-            </>
-          )}
+            </div>
 
-          <button type="submit" className="btn btn-primary btn-block" disabled={saving}>
-            <IconSave />
-            {saving ? 'Saving…' : 'Save'}
-          </button>
-
-          {scanUrl && (
             <div className="preview-actions">
               <button type="button" className="btn btn-ghost" onClick={downloadQr}>
                 <IconDownload /> Download QR
@@ -635,11 +760,11 @@ export default function GeneratePage() {
                 <IconExternal /> Test scan page
               </a>
             </div>
-          )}
 
-          <p className="save-note">IMPORTANT: Don&apos;t forget to test your QR</p>
-        </section>
-      </aside>
+            <p className="save-note">IMPORTANT: Don&apos;t forget to test your QR</p>
+          </section>
+        </aside>
+      )}
     </form>
     </div>
   );

@@ -4,8 +4,16 @@ const fs = require('fs');
 const multer = require('multer');
 const { randomUUID } = require('crypto');
 const store = require('../db/database');
+const { geocodeQuery } = require('../geocode');
+const {
+  attachUser,
+  requireAuth,
+  requireAdmin,
+  requireProfileAccess,
+} = require('../middleware/auth');
 
 const router = express.Router();
+router.use(attachUser);
 
 const uploadsDir = path.join(__dirname, '..', 'uploads');
 if (!fs.existsSync(uploadsDir)) {
@@ -93,6 +101,32 @@ function parseBool(value, defaultValue = true) {
   return defaultValue;
 }
 
+async function enrichBranches(branches) {
+  const list = Array.isArray(branches) ? branches : [];
+  const out = [];
+  for (const b of list) {
+    if (b.latitude != null && b.longitude != null) {
+      out.push(b);
+      continue;
+    }
+    const q = b.address || b.locationName || b.name;
+    const coords = await geocodeQuery(q);
+    if (coords) {
+      out.push({
+        ...b,
+        latitude: coords.lat,
+        longitude: coords.lng,
+        googleMapLink:
+          b.googleMapLink ||
+          `https://www.google.com/maps?q=${coords.lat},${coords.lng}`,
+      });
+    } else {
+      out.push(b);
+    }
+  }
+  return out;
+}
+
 function legacyBranches(row) {
   const phones = Array.isArray(row.phone_numbers) ? row.phone_numbers : [];
   if (
@@ -142,6 +176,7 @@ function mapProfile(row) {
     id: row.id,
     name: row.name,
     description: row.description || '',
+    department: row.department || row.description || '',
     personalPhone: row.personal_phone || '',
     personalEmail: row.personal_email || '',
     includeShop,
@@ -170,6 +205,10 @@ function mapProfile(row) {
     avatarUrl: avatarUrl(row.avatar_filename),
     qrFgColor: row.qr_fg_color || '#111111',
     qrBgColor: row.qr_bg_color || '#ffffff',
+    qrFrame: row.qr_frame || 'none',
+    active: row.active !== false,
+    scanCount: Number(row.scan_count) || 0,
+    lastScannedAt: row.last_scanned_at || null,
     photos: getPhotos(row.id),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -182,16 +221,23 @@ function removeFileIfExists(filename) {
   if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
 }
 
-router.get('/', (_req, res) => {
+router.get('/', requireAuth, (req, res) => {
   try {
-    res.json(store.getAllProfiles().map(mapProfile));
+    if (req.user.role === 'admin') {
+      return res.json(store.getAllProfiles().map(mapProfile));
+    }
+    if (!req.user.profileId) {
+      return res.json([]);
+    }
+    const row = store.getProfile(req.user.profileId);
+    return res.json(row ? [mapProfile(row)] : []);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch profiles' });
   }
 });
 
-router.get('/:id', (req, res) => {
+router.get('/:id', requireAuth, requireProfileAccess, (req, res) => {
   try {
     const row = store.getProfile(req.params.id);
     if (!row) return res.status(404).json({ error: 'Profile not found' });
@@ -202,12 +248,13 @@ router.get('/:id', (req, res) => {
   }
 });
 
-router.post('/', uploadFields, (req, res) => {
+router.post('/', requireAdmin, uploadFields, async (req, res) => {
   try {
     const id = randomUUID();
     const {
       name,
       description,
+      department,
       personalPhone,
       personalEmail,
       includeShop,
@@ -218,6 +265,9 @@ router.post('/', uploadFields, (req, res) => {
       branches,
       qrFgColor,
       qrBgColor,
+      staffEmail,
+      staffPassword,
+      createStaffLogin,
     } = req.body;
 
     if (!name || !name.trim()) {
@@ -225,15 +275,19 @@ router.post('/', uploadFields, (req, res) => {
     }
 
     const shopEnabled = parseBool(includeShop, true);
-    const branchList = shopEnabled ? parseBranches(branches) : [];
+    const branchList = shopEnabled
+      ? await enrichBranches(parseBranches(branches))
+      : [];
     const first = branchList[0] || {};
     const now = new Date().toISOString();
     const avatarFile = req.files?.avatar?.[0];
+    const departmentValue = String(department || '').trim() || null;
 
     const profile = {
       id,
       name: name.trim(),
       description: description || null,
+      department: departmentValue,
       personal_phone: String(personalPhone || '').trim() || null,
       personal_email: String(personalEmail || '').trim() || null,
       include_shop: shopEnabled,
@@ -256,6 +310,10 @@ router.post('/', uploadFields, (req, res) => {
       avatar_filename: avatarFile?.filename || null,
       qr_fg_color: qrFgColor || '#111111',
       qr_bg_color: qrBgColor || '#ffffff',
+      qr_frame: req.body.qrFrame || 'none',
+      active: true,
+      scan_count: 0,
+      last_scanned_at: null,
       created_at: now,
       updated_at: now,
     };
@@ -267,14 +325,45 @@ router.post('/', uploadFields, (req, res) => {
       store.addPhoto(id, file.filename, file.originalname);
     }
 
-    res.status(201).json(mapProfile(store.getProfile(id)));
+    let staffUser = null;
+    // Staff access = profile Email (Gmail). Sign in with Google matches this address.
+    const googleLoginEmail = String(
+      personalEmail || staffEmail || ''
+    )
+      .trim()
+      .toLowerCase();
+    const skipStaffLogin =
+      createStaffLogin === 'false' || createStaffLogin === false;
+    if (googleLoginEmail && !skipStaffLogin) {
+      try {
+        staffUser = store.createUser({
+          email: googleLoginEmail,
+          // Google-only — password login not used
+          password: String(staffPassword || 'google:pending'),
+          name: name.trim(),
+          role: 'staff',
+          profileId: id,
+        });
+      } catch (err) {
+        // Profile already created; surface login issue clearly
+        return res.status(201).json({
+          ...mapProfile(store.getProfile(id)),
+          staffLoginError: err.message,
+        });
+      }
+    }
+
+    res.status(201).json({
+      ...mapProfile(store.getProfile(id)),
+      staffUser,
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message || 'Failed to create profile' });
   }
 });
 
-router.put('/:id', uploadFields, (req, res) => {
+router.put('/:id', requireAuth, requireProfileAccess, uploadFields, async (req, res) => {
   try {
     const { id } = req.params;
     const existing = store.getProfile(id);
@@ -283,6 +372,7 @@ router.put('/:id', uploadFields, (req, res) => {
     const {
       name,
       description,
+      department,
       personalPhone,
       personalEmail,
       includeShop,
@@ -295,6 +385,8 @@ router.put('/:id', uploadFields, (req, res) => {
       removeAvatar,
       qrFgColor,
       qrBgColor,
+      qrFrame,
+      active,
     } = req.body;
 
     if (!name || !name.trim()) {
@@ -302,10 +394,13 @@ router.put('/:id', uploadFields, (req, res) => {
     }
 
     const shopEnabled = parseBool(includeShop, true);
-    const branchList = shopEnabled ? parseBranches(branches) : [];
+    const branchList = shopEnabled
+      ? await enrichBranches(parseBranches(branches))
+      : [];
     const first = branchList[0] || {};
     const avatarFile = req.files?.avatar?.[0];
     let avatarFilename = existing.avatar_filename || null;
+    const departmentValue = String(department || '').trim() || null;
 
     if (removeAvatar === 'true' || removeAvatar === true) {
       removeFileIfExists(avatarFilename);
@@ -320,6 +415,7 @@ router.put('/:id', uploadFields, (req, res) => {
     store.updateProfile(id, {
       name: name.trim(),
       description: description || null,
+      department: departmentValue,
       personal_phone: String(personalPhone || '').trim() || null,
       personal_email: String(personalEmail || '').trim() || null,
       include_shop: shopEnabled,
@@ -342,7 +438,11 @@ router.put('/:id', uploadFields, (req, res) => {
       avatar_filename: avatarFilename,
       qr_fg_color: qrFgColor || '#111111',
       qr_bg_color: qrBgColor || '#ffffff',
+      qr_frame: qrFrame || existing.qr_frame || 'none',
       updated_at: new Date().toISOString(),
+      ...(active !== undefined
+        ? { active: !(active === 'false' || active === false || active === '0') }
+        : {}),
     });
 
     let idsToRemove = [];
@@ -375,7 +475,64 @@ router.put('/:id', uploadFields, (req, res) => {
   }
 });
 
-router.delete('/:id', (req, res) => {
+router.patch('/:id/design', requireAuth, requireProfileAccess, upload.single('avatar'), (req, res) => {
+  try {
+    const { id } = req.params;
+    const existing = store.getProfile(id);
+    if (!existing) return res.status(404).json({ error: 'Profile not found' });
+
+    const qrFgColor = req.body.qrFgColor || existing.qr_fg_color || '#111111';
+    const qrBgColor = req.body.qrBgColor || existing.qr_bg_color || '#ffffff';
+    const qrFrame = req.body.qrFrame || existing.qr_frame || 'none';
+    let avatarFilename = existing.avatar_filename || null;
+
+    if (req.body.removeAvatar === 'true' || req.body.removeAvatar === true) {
+      removeFileIfExists(avatarFilename);
+      avatarFilename = null;
+    }
+    if (req.file) {
+      removeFileIfExists(avatarFilename);
+      avatarFilename = req.file.filename;
+    }
+
+    // Design-only: never change profile id / scan URL fields
+    store.updateProfile(id, {
+      qr_fg_color: qrFgColor,
+      qr_bg_color: qrBgColor,
+      qr_frame: qrFrame,
+      avatar_filename: avatarFilename,
+      updated_at: new Date().toISOString(),
+    });
+
+    res.json(mapProfile(store.getProfile(id)));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message || 'Failed to update design' });
+  }
+});
+
+router.patch('/:id/active', requireAdmin, (req, res) => {
+  try {
+    const existing = store.getProfile(req.params.id);
+    if (!existing) return res.status(404).json({ error: 'Profile not found' });
+    const active = !(
+      req.body?.active === false ||
+      req.body?.active === 'false' ||
+      req.body?.active === 0 ||
+      req.body?.active === '0'
+    );
+    store.updateProfile(req.params.id, {
+      active,
+      updated_at: new Date().toISOString(),
+    });
+    res.json(mapProfile(store.getProfile(req.params.id)));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to update status' });
+  }
+});
+
+router.delete('/:id', requireAdmin, (req, res) => {
   try {
     const { id } = req.params;
     const existing = store.getProfile(id);
@@ -397,3 +554,4 @@ router.delete('/:id', (req, res) => {
 });
 
 module.exports = router;
+module.exports.mapProfile = mapProfile;

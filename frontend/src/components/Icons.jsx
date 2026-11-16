@@ -260,3 +260,101 @@ export function IconStore(props) {
     </Svg>
   );
 }
+
+export function IconBulk(props) {
+  return (
+    <Svg {...props}>
+      <rect x="3.5" y="3.5" width="7" height="7" rx="1.4" />
+      <rect x="13.5" y="3.5" width="7" height="7" rx="1.4" />
+      <rect x="3.5" y="13.5" width="7" height="7" rx="1.4" />
+      <rect x="13.5" y="13.5" width="7" height="7" rx="1.4" />
+    </Svg>
+  );
+}
+
+export function IconStats(props) {
+  return (
+    <Svg {...props}>
+      <path d="M4 19.5h16" />
+      <path d="M7 16.5V10" />
+      <path d="M12 16.5V6.5" />
+      <path d="M17 16.5v-4" />
+    </Svg>
+  );
+}
+
+export function IconTemplate(props) {
+  return (
+    <Svg {...props}>
+      <rect x="4" y="4" width="16" height="16" rx="2.5" />
+      <path d="M9 9h6" />
+      <path d="M9 12.5h6" />
+      <path d="M9 16h4" />
+    </Svg>
+  );
+}
+
+export function IconGlobe(props) {
+  return (
+    <Svg {...props}>
+      <circle cx="12" cy="12" r="8.25" />
+      <path d="M3.8 12h16.4" />
+      <path d="M12 3.8c2.4 2.5 3.6 5.3 3.6 8.2s-1.2 5.7-3.6 8.2" />
+      <path d="M12 3.8c-2.4 2.5-3.6 5.3-3.6 8.2s1.2 5.7 3.6 8.2" />
+    </Svg>
+  );
+}
+
+export function IconCard(props) {
+  return (
+    <Svg {...props}>
+      <rect x="3.5" y="6" width="17" height="12" rx="2" />
+      <path d="M3.5 10h17" />
+      <path d="M7 14.5h4" />
+    </Svg>
+  );
+}
+
+export function IconSettings(props) {
+  return (
+    <Svg {...props}>
+      <circle cx="12" cy="12" r="3" />
+      <path d="M12 3.5v2.2" />
+      <path d="M12 18.3v2.2" />
+      <path d="M4.9 6.8l1.6 1.6" />
+      <path d="M17.5 15.6l1.6 1.6" />
+      <path d="M3.5 12h2.2" />
+      <path d="M18.3 12h2.2" />
+      <path d="M4.9 17.2l1.6-1.6" />
+      <path d="M17.5 8.4l1.6-1.6" />
+    </Svg>
+  );
+}
+
+export function IconShield(props) {
+  return (
+    <Svg {...props}>
+      <path d="M12 3.5l7 2.5v5.8c0 4.3-2.9 7.8-7 9.2-4.1-1.4-7-4.9-7-9.2V6z" />
+      <path d="M9.2 12.1l1.8 1.8 3.8-3.8" />
+    </Svg>
+  );
+}
+
+export function IconHelp(props) {
+  return (
+    <Svg {...props}>
+      <circle cx="12" cy="12" r="8.25" />
+      <path d="M9.6 9.4a2.4 2.4 0 0 1 4.6 1c0 1.5-2.2 1.8-2.2 3.2" />
+      <path d="M12 17h.01" />
+    </Svg>
+  );
+}
+
+export function IconCollapse(props) {
+  return (
+    <Svg {...props}>
+      <rect x="3.5" y="5" width="17" height="14" rx="2" />
+      <path d="M9.5 5v14" />
+    </Svg>
+  );
+}
