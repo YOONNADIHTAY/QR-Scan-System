@@ -22,19 +22,19 @@ export default defineConfig({
         categories: ['business', 'productivity'],
         icons: [
           {
-            src: '/icons/icon-192-v4.png',
+            src: '/icons/icon-192-v5.png',
             sizes: '192x192',
             type: 'image/png',
             purpose: 'any',
           },
           {
-            src: '/icons/icon-512-v4.png',
+            src: '/icons/icon-512-v5.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'any',
           },
           {
-            src: '/icons/icon-512-v4.png',
+            src: '/icons/icon-512-v5.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'maskable',
