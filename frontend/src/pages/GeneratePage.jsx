@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { createProfile, getProfile, updateProfile } from '../api';
 import BranchFields, { emptyBranch, normalizeBranchPhones } from '../components/BranchFields';
@@ -293,7 +293,7 @@ export default function GeneratePage({ forcedId = null, staffMode = false }) {
           : await createProfile(fd);
 
       if (saved.staffLoginError) {
-        setError(`QR saved, but customer login failed: ${saved.staffLoginError}`);
+        setError(`QR saved, but Users login failed: ${saved.staffLoginError}`);
       }
 
       setSavedId(saved.id);
@@ -348,13 +348,13 @@ export default function GeneratePage({ forcedId = null, staffMode = false }) {
           {staffView
             ? 'My QR design'
             : isEdit
-              ? 'Edit Customer Record'
-              : 'Create Customer Record'}
+              ? 'Edit Users Record'
+              : 'Create Users Record'}
         </h2>
         <p>
           {staffView
             ? 'Update your details and customize your QR look.'
-            : 'Enter customer and shop details to generate a scan profile.'}
+            : 'Enter Users and shop details to generate a scan profile.'}
         </p>
       </div>
       <header className="page-toolbar">

@@ -96,7 +96,7 @@ export async function login(username, password, remember = true) {
 export async function loginWithStaffEmail(username, remember = true) {
   const email = String(username || '').trim().toLowerCase();
   if (!email) {
-    return { ok: false, error: 'Enter the Gmail from your customer QR Email field' };
+    return { ok: false, error: 'Enter the Gmail from your Users QR Email field' };
   }
   try {
     const res = await fetch(apiUrl('/api/auth/staff-email'), {

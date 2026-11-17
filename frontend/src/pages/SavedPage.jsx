@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getProfiles, deleteProfile, setProfileActive } from '../api';
 import BrandedQr from '../components/BrandedQr';
@@ -164,7 +164,7 @@ export default function SavedPage() {
       <div className="welcome-banner erp-hero">
         <h2>{t('welcomeAdmin')}</h2>
         <p>
-          Register customers, generate QR, edit/delete info, manage designs, and track scans.
+          Register Users, generate QR, edit/delete info, manage designs, and track scans.
         </p>
       </div>
 
@@ -177,11 +177,11 @@ export default function SavedPage() {
         </div>
         <div className="toolbar-actions">
           <Link to="/users" className="btn btn-secondary">
-            Customer list
+            Users list
           </Link>
           <Link to="/" className="btn btn-primary">
             <IconPlus />
-            Generate customer QR
+            Generate Users QR
           </Link>
         </div>
       </header>
@@ -236,7 +236,7 @@ export default function SavedPage() {
           <div className="loading">Loading saved codes…</div>
         ) : !filtered.length ? (
           <div className="empty-panel">
-            <p>No customer records match your filters.</p>
+            <p>No Users records match your filters.</p>
             <Link to="/" className="btn btn-primary">
               <IconPlus />
               New Record

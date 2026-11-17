@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { getProfile, getProfileScanStats } from '../api';
 import { assetUrl } from '../apiBase';
@@ -34,7 +34,7 @@ function activityMeta(level) {
     return { label: 'Hot', hint: 'High traffic this week', tone: 'hot' };
   }
   if (level === 'Active') {
-    return { label: 'Active', hint: 'Customers are scanning', tone: 'active' };
+    return { label: 'Active', hint: 'Users are scanning', tone: 'active' };
   }
   if (level === 'Steady') {
     return { label: 'Steady', hint: 'Some past scans recorded', tone: 'steady' };
@@ -91,7 +91,7 @@ export default function RecordOverviewPage({ forcedId = null }) {
     return (
       <div className="page-panel">
         <div className="panel-card sidebar-page-card empty-panel">
-          <p>Your QR is not linked yet. Ask an admin to create your customer QR.</p>
+          <p>Your QR is not linked yet. Ask an admin to create your Users QR.</p>
         </div>
       </div>
     );
@@ -141,7 +141,7 @@ export default function RecordOverviewPage({ forcedId = null }) {
   return (
     <div className="page-panel staff-workspace">
       <div className="welcome-banner erp-hero">
-        <h2>{admin ? 'Customer record' : 'My QR'}</h2>
+        <h2>{admin ? 'Users record' : 'My QR'}</h2>
         <p>
           {admin
             ? 'Profile overview and scan statistics. Use Edit Record to change details or QR design.'
@@ -156,7 +156,7 @@ export default function RecordOverviewPage({ forcedId = null }) {
           <div className="profile-intel-head">
             <div>
               <h3>Profile</h3>
-              <p className="scan-intel-sub">Customer card · scan-ready overview</p>
+              <p className="scan-intel-sub">Users card · scan-ready overview</p>
             </div>
             <span className={`scan-activity-pill ${qrOn ? 'tone-active' : 'tone-quiet'}`}>
               {qrOn ? 'Active' : 'Off'}
@@ -178,7 +178,7 @@ export default function RecordOverviewPage({ forcedId = null }) {
                   </div>
                 )}
                 <div className="profile-identity-copy">
-                  <h4>{profile.name || 'Unnamed customer'}</h4>
+                  <h4>{profile.name || 'Unnamed Users'}</h4>
                   <div className="profile-chip-row">
                     {(profile.position || profile.description) ? (
                       <span className="profile-chip">{profile.position || profile.description}</span>
@@ -268,7 +268,7 @@ export default function RecordOverviewPage({ forcedId = null }) {
                   onClick={() =>
                     downloadBrandedQrPng(
                       `record-qr-${profile.id}`,
-                      `${profile.name || 'customer'}-qr.png`
+                      `${profile.name || 'Users'}-qr.png`
                     )
                   }
                 >

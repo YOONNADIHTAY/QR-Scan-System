@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { getAuthUser, isAuthenticated, login } from '../auth';
 import { useI18n } from '../I18nContext';
@@ -7,20 +7,20 @@ const SLIDES = [
   {
     id: 'build-qr',
     image: '/carousel/qr-1.png',
-    title: 'Build customer QR cards',
-    text: 'Create and manage branded QR links for every shop and customer.',
+    title: 'Build Users QR cards',
+    text: 'Create and manage branded QR links for every shop and Users.',
   },
   {
     id: 'scan-images',
     image: '/carousel/qr-2.webp',
     title: 'Instant access to images',
-    text: 'Customers scan once and open products, maps, and contacts instantly.',
+    text: 'Users scan once and open products, maps, and contacts instantly.',
   },
   {
     id: 'scan-qr',
     image: '/carousel/qr-3.png',
     title: 'Scan and open instantly',
-    text: 'Point a phone at the customer QR and open the full profile in one tap.',
+    text: 'Point a phone at the Users QR and open the full profile in one tap.',
   },
 ];
 

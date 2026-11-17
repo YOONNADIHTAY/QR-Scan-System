@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { Routes, Route, NavLink, Navigate, useLocation, useParams } from 'react-router-dom';
 import GeneratePage from './pages/GeneratePage';
 import SavedPage from './pages/SavedPage';
@@ -62,7 +62,7 @@ function StaffHome() {
     return (
       <div className="page-panel">
         <div className="panel-card sidebar-page-card empty-panel">
-          <p>Your QR is not linked yet. Ask an admin to create your customer QR.</p>
+          <p>Your QR is not linked yet. Ask an admin to create your Users QR.</p>
         </div>
       </div>
     );
@@ -162,7 +162,7 @@ function AppShell() {
                 {t('navSettings')}
               </SidebarLink>
               <SidebarLink to="/users" icon={<IconUser />}>
-                Customer register
+                Users register
               </SidebarLink>
               <div className="nav-divider" role="separator" />
               <SidebarLink to="/security" icon={<IconShield />}>
@@ -201,7 +201,7 @@ function AppShell() {
             </div>
           ) : (
             <div className="sidebar-tip">
-              <strong>Customer workspace</strong>
+              <strong>Users workspace</strong>
               <span>View your profile, scans, and edit your QR record.</span>
             </div>
           )}
@@ -212,7 +212,7 @@ function AppShell() {
               alt=""
             />
             <div>
-              <strong>{admin ? t('administrator') : profile?.name || 'Customer'}</strong>
+              <strong>{admin ? t('administrator') : profile?.name || 'Users'}</strong>
               <small title={userLabel}>{userLabel}</small>
             </div>
           </div>

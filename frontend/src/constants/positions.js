@@ -1,4 +1,4 @@
-/** Common organisational positions for customer / staff QR cards */
+/** Common organisational positions for users / staff QR cards */
 export const POSITION_OPTIONS = [
   'CEO',
   'Managing Director',

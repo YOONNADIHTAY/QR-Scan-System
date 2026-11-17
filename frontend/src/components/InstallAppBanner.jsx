@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 
 function isStandalone() {
   return (
@@ -63,7 +63,7 @@ export default function InstallAppBanner() {
         <span>
           {iosHint
             ? 'iPhone: Share → Add to Home Screen to install.'
-            : 'Install on your phone for quick customer / admin access.'}
+            : 'Install on your phone for quick Users / admin access.'}
         </span>
       </div>
       <div className="install-banner-actions">

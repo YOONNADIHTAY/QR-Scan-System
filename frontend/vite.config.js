@@ -11,7 +11,7 @@ export default defineConfig({
       manifest: {
         name: '29 Jewellery QR System',
         short_name: '29 Jewellery QR',
-        description: '29 Jewellery QR cards — admin and customer workspace',
+        description: '29 Jewellery QR cards — admin and Users workspace',
         theme_color: '#ffffff',
         background_color: '#ffffff',
         display: 'standalone',

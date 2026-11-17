@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   createProfile,
@@ -78,7 +78,7 @@ export function BulkPage() {
   async function onGenerate(e) {
     e.preventDefault();
     if (!names.length) {
-      setError('Enter at least one customer name.');
+      setError('Enter at least one Users name.');
       return;
     }
     setBusy(true);
@@ -240,7 +240,7 @@ export function StatsPage() {
   return (
     <PageFrame
       title={t('statsTitle')}
-      desc="QR scan statistics and customer registry overview."
+      desc="QR scan statistics and Users registry overview."
     >
       {error ? <div className="error-banner">{error}</div> : null}
       {loading || !stats ? (
@@ -264,17 +264,17 @@ export function StatsPage() {
               <strong>
                 {stats.activeStaff}/{stats.totalStaff}
               </strong>
-              <span>Active customer accounts</span>
+              <span>Active Users accounts</span>
             </article>
           </div>
 
           <section className="panel-card sidebar-page-card" style={{ marginTop: '1rem' }}>
-            <h3 style={{ margin: '0 0 0.75rem' }}>Scans by customer QR</h3>
+            <h3 style={{ margin: '0 0 0.75rem' }}>Scans by Users QR</h3>
             <div className="data-table-wrap">
               <table className="data-table">
                 <thead>
                   <tr>
-                    <th>Customer / QR</th>
+                    <th>Users / QR</th>
                     <th>Scans</th>
                     <th>Last scan</th>
                     <th>Status</th>
@@ -312,13 +312,13 @@ export function StatsPage() {
 const TEMPLATES = [
   {
     id: 'staff',
-    title: 'Customer profile',
-    text: 'Name, role, phone, and shop map — classic customer QR card.',
+    title: 'Users profile',
+    text: 'Name, role, phone, and shop map — classic Users QR card.',
   },
   {
     id: 'product',
     title: 'Product showcase',
-    text: 'Best for jewellery photos customers can browse after scan.',
+    text: 'Best for jewellery photos Users can browse after scan.',
   },
   {
     id: 'branches',
@@ -410,7 +410,7 @@ export function PlansPage() {
         <h3>{t('planName')}</h3>
         <p>{t('planText')}</p>
         <ul className="plan-list">
-          <li>Customer QR create / edit / delete</li>
+          <li>Users QR create / edit / delete</li>
           <li>Bulk generation</li>
           <li>Cloudflare public scan links</li>
           <li>Local admin sign-in</li>
@@ -693,7 +693,7 @@ export function UsersPage() {
   }
 
   async function onDelete(id) {
-    if (!window.confirm('Delete this customer account?')) return;
+    if (!window.confirm('Delete this Users account?')) return;
     try {
       await deleteUser(id);
       await load();
@@ -704,19 +704,19 @@ export function UsersPage() {
 
   return (
     <PageFrame
-      title="Customer register"
-      desc="Register customer accounts, link QR profiles, activate or deactivate access."
+      title="Users register"
+      desc="Register Users accounts, link QR profiles, activate or deactivate access."
       actions={
         <button type="button" className="btn btn-primary" onClick={() => navigate('/')}>
           <IconPlus />
-          New customer QR
+          New Users QR
         </button>
       }
     >
       {error ? <div className="error-banner">{error}</div> : null}
 
       <section className="panel-card sidebar-page-card" style={{ marginBottom: '1rem' }}>
-        <h3 style={{ margin: '0 0 0.75rem' }}>Register new customer</h3>
+        <h3 style={{ margin: '0 0 0.75rem' }}>Register new Users</h3>
         <form className="stack-form" onSubmit={onCreate}>
           <div className="form-grid">
             <label className="field">
@@ -761,13 +761,13 @@ export function UsersPage() {
             </label>
           </div>
           <button className="btn btn-primary" type="submit" disabled={busy}>
-            {busy ? 'Saving…' : 'Register customer'}
+            {busy ? 'Saving…' : 'Register Users'}
           </button>
         </form>
       </section>
 
       <section className="panel-card sidebar-page-card">
-        <h3 style={{ margin: '0 0 0.75rem' }}>Customer list</h3>
+        <h3 style={{ margin: '0 0 0.75rem' }}>Users list</h3>
         {loading ? (
           <div className="loading">Loading users…</div>
         ) : (
@@ -790,7 +790,7 @@ export function UsersPage() {
                     <td>{u.email}</td>
                     <td>
                       <span className="tag tag-profile">
-                        {u.role === 'staff' ? 'customer' : u.role}
+                        {u.role === 'staff' ? 'Users' : u.role}
                       </span>
                     </td>
                     <td>
@@ -928,7 +928,7 @@ export function HelpPage() {
       <section className="panel-card sidebar-page-card help-list">
         <article>
           <h3>{t('navNewQr')}</h3>
-          <p>Open New QR, fill customer details, save, then download or print the code.</p>
+          <p>Open New QR, fill Users details, save, then download or print the code.</p>
         </article>
         <article>
           <h3>{t('navDomains')}</h3>
@@ -936,7 +936,7 @@ export function HelpPage() {
         </article>
         <article>
           <h3>{t('navBulk')}</h3>
-          <p>Paste many customer names in Bulk QR generation to create profiles quickly.</p>
+          <p>Paste many Users names in Bulk QR generation to create profiles quickly.</p>
         </article>
         <article>
           <h3>{t('signIn')}</h3>
