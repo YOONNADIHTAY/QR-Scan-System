@@ -5,7 +5,6 @@ import { assetUrl } from '../apiBase';
 import LocationMap from '../components/LocationMap';
 import {
   IconFacebook,
-  IconIdCard,
   IconMail,
   IconMap,
   IconPhone,
@@ -15,6 +14,15 @@ import {
 } from '../components/Icons';
 import { formatShopLabel } from '../constants/shops';
 import { toGoogleMapsQueryUrl, toGoogleMapsUrl } from '../utils/maps';
+
+function IconSms(props) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true" {...props}>
+      <path d="M4.5 6.5h15a1.5 1.5 0 0 1 1.5 1.5v8a1.5 1.5 0 0 1-1.5 1.5H9l-3.5 2.5V16H4.5A1.5 1.5 0 0 1 3 14.5v-6A1.5 1.5 0 0 1 4.5 6.5z" />
+      <path d="M8 11h8M8 14h5" />
+    </svg>
+  );
+}
 
 export default function ScanPage() {
   const { id } = useParams();
@@ -64,11 +72,13 @@ export default function ScanPage() {
   if (loading) return <div className="loading">Loading…</div>;
   if (error) {
     return (
-      <div className="scan-page">
-        <div className="error-banner">{error}</div>
-        <button className="btn btn-primary" type="button" onClick={() => window.location.reload()}>
-          Try again
-        </button>
+      <div className="scan-v2">
+        <div className="scan-v2-shell">
+          <div className="error-banner">{error}</div>
+          <button className="btn btn-primary" type="button" onClick={() => window.location.reload()}>
+            Try again
+          </button>
+        </div>
       </div>
     );
   }
@@ -128,188 +138,206 @@ export default function ScanPage() {
   )
     .map((p) => String(p || '').trim())
     .filter(Boolean);
-  const hasPersonalBlock = Boolean(
-    personalPhones.length || profile.personalEmail || personalSocial.length
-  );
+  const primaryPhone = personalPhones[0] || '';
+  const position = profile.position || profile.description || '';
   const includeShop = profile.includeShop !== false;
-  const hasShopBlock =
-    includeShop &&
-    (Boolean(profile.shopName) || branches.length > 0);
+  const hasShopBlock = includeShop && (Boolean(profile.shopName) || branches.length > 0);
+  const hasPhotos = profile.photos?.length > 0;
 
   return (
-    <div className="scan-page employee-profile">
-      <section className="employee-hero">
-        <div className="employee-photo-wrap">
-          {profile.avatarUrl ? (
-            <img
-              className="employee-avatar-img"
-              src={assetUrl(profile.avatarUrl)}
-              alt={profile.name}
-            />
-          ) : (
-            <div className="employee-avatar" aria-hidden="true">
-              <IconUser />
-            </div>
-          )}
-        </div>
-        <div className="employee-identity">
-          <p className="hero-kicker">Personal</p>
-          <h1>{profile.name}</h1>
-          {(profile.position || profile.description) && (
-            <p className="employee-position">{profile.position || profile.description}</p>
-          )}
-        </div>
-      </section>
+    <div className="scan-v2">
+      <div className="scan-v2-bg" aria-hidden="true">
+        <span className="blob blob-a" />
+        <span className="blob blob-b" />
+        <span className="blob blob-c" />
+        <span className="grid-lines" />
+      </div>
 
-      {hasPersonalBlock && (
-        <section className="scan-block">
-          <h2>
-            <span className="section-logo personal">
-              <IconIdCard />
-            </span>
-            Personal information
-          </h2>
-          <div className="contact-list">
-            {personalPhones.map((phone) => (
-              <a className="contact-row" href={`tel:${phone}`} key={phone}>
-                <span className="contact-icon phone">
-                  <IconPhone />
-                </span>
-                <span className="contact-copy">
-                  <small>Phone</small>
-                  <strong>{phone}</strong>
-                </span>
-              </a>
-            ))}
-            {profile.personalEmail && (
-              <a className="contact-row" href={`mailto:${profile.personalEmail}`}>
-                <span className="contact-icon mail">
-                  <IconMail />
-                </span>
-                <span className="contact-copy">
-                  <small>Email</small>
-                  <strong>{profile.personalEmail}</strong>
-                </span>
-              </a>
+      <div className="scan-v2-shell">
+        <header className="scan-v2-brand">
+          <img src="/29-jewellery-logo.png" alt="" />
+          <div>
+            <strong>29 Jewellery</strong>
+            <small>Digital QR Card</small>
+          </div>
+        </header>
+
+        <article className="scan-v2-card">
+          <div className="scan-v2-avatar-wrap">
+            {profile.avatarUrl ? (
+              <img className="scan-v2-avatar" src={assetUrl(profile.avatarUrl)} alt={profile.name} />
+            ) : (
+              <div className="scan-v2-avatar fallback" aria-hidden="true">
+                <IconUser />
+              </div>
             )}
-            {personalSocial.map((tile) => (
-              <a
-                key={tile.key}
-                className="contact-row"
-                href={tile.href}
-                target="_blank"
-                rel="noreferrer"
-              >
-                <span className={`contact-icon ${tile.tone}`}>{tile.icon}</span>
-                <span className="contact-copy">
-                  <small>Social</small>
-                  <strong>{tile.label}</strong>
-                </span>
-              </a>
-            ))}
           </div>
-        </section>
-      )}
 
-      {hasShopBlock && (
-        <section className="scan-block shop-block">
-          <h2>
-            <img
-              className="section-logo shop"
-              src="/29-jewellery-logo.png"
-              alt=""
-            />
-            29 Jewellery
-          </h2>
-          <p className="shop-block-name">{profile.shopName || '29 Jewellery'}</p>
+          <div className="scan-v2-identity">
+            <h1>{profile.name}</h1>
+            {position ? <p className="scan-v2-role">{position}</p> : null}
+            <p className="scan-v2-tagline">Proudly serving with 29 Jewellery</p>
+          </div>
 
-          {branches.length > 0 && (
-            <div className="branch-scan-list">
-              <h3 className="scan-subheading">
-                <IconMap /> Shop locations
-              </h3>
-              {branches.map((branch, i) => {
-                const hasCoords =
-                  branch.latitude != null &&
-                  branch.longitude != null &&
-                  !Number.isNaN(Number(branch.latitude)) &&
-                  !Number.isNaN(Number(branch.longitude));
-                const place = String(
-                  branch.address || branch.locationName || branch.name || ''
-                ).trim();
-                const mapUrl =
-                  branch.googleMapLink ||
-                  (hasCoords
-                    ? toGoogleMapsUrl(Number(branch.latitude), Number(branch.longitude))
-                    : toGoogleMapsQueryUrl(place));
-                const shopLabel = formatShopLabel(branch.shopNo);
-                const area = String(branch.name || '').trim();
-                const title =
-                  [shopLabel, area || place].filter(Boolean).join(' · ') || 'Location';
-
-                const branchPhones = (
-                  Array.isArray(branch.phones) && branch.phones.length
-                    ? branch.phones
-                    : branch.phone
-                      ? [branch.phone]
-                      : []
-                )
-                  .map((p) => String(p || '').trim())
-                  .filter(Boolean);
-
-                return (
-                  <article className="branch-scan-card" key={`${title}-${i}`}>
-                    <h3>{title}</h3>
-                    {shopLabel && place && place !== area ? (
-                      <p className="branch-scan-address">{place}</p>
-                    ) : null}
-                    {branchPhones.length > 0 && (
-                      <div className="branch-phone-list">
-                        {branchPhones.map((phone) => (
-                          <p className="branch-phone-line" key={phone}>
-                            <a href={`tel:${phone}`}>{phone}</a>
-                          </p>
-                        ))}
-                      </div>
-                    )}
-                    <LocationMap
-                      latitude={branch.latitude}
-                      longitude={branch.longitude}
-                      address={place}
-                      locationName={place}
-                      googleMapLink={branch.googleMapLink || mapUrl}
-                    />
-                    {branchPhones.map((phone) => (
-                      <a
-                        key={`call-${phone}`}
-                        className="btn btn-ghost btn-block call-shop-btn"
-                        href={`tel:${phone}`}
-                      >
-                        <IconPhone /> Call {phone}
-                      </a>
-                    ))}
-                  </article>
-                );
-              })}
+          {(primaryPhone || profile.personalEmail) && (
+            <div className="scan-v2-orbs">
+              {primaryPhone ? (
+                <a className="scan-v2-orb" href={`sms:${primaryPhone}`}>
+                  <span className="orb-icon">
+                    <IconSms />
+                  </span>
+                  <small>Text</small>
+                </a>
+              ) : null}
+              {primaryPhone ? (
+                <a className="scan-v2-orb" href={`tel:${primaryPhone}`}>
+                  <span className="orb-icon">
+                    <IconPhone />
+                  </span>
+                  <small>Call</small>
+                </a>
+              ) : null}
+              {profile.personalEmail ? (
+                <a className="scan-v2-orb" href={`mailto:${profile.personalEmail}`}>
+                  <span className="orb-icon">
+                    <IconMail />
+                  </span>
+                  <small>Email</small>
+                </a>
+              ) : null}
             </div>
           )}
-        </section>
-      )}
 
-      {profile.photos?.length > 0 && (
-        <section className="scan-section" id="photos">
-          <h2>Best-selling products</h2>
-          <div className="scan-photos">
-            {profile.photos.map((p) => (
-              <img
-                key={p.id}
-                src={assetUrl(p.url)}
-                alt={p.originalName || 'Best seller'}
-              />
-            ))}
+          {personalSocial.length > 0 && (
+            <div className="scan-v2-social">
+              {personalSocial.map((tile) => (
+                <a
+                  key={tile.key}
+                  className={`scan-v2-social-btn ${tile.tone}`}
+                  href={tile.href}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label={tile.label}
+                >
+                  {tile.icon}
+                </a>
+              ))}
+            </div>
+          )}
+
+          <div className="scan-v2-grid">
+            {hasShopBlock ? (
+              <a className="scan-v2-tile" href="#shop">
+                <IconMap />
+                <span>Shop</span>
+              </a>
+            ) : null}
+            {primaryPhone ? (
+              <a className="scan-v2-tile" href={`tel:${primaryPhone}`}>
+                <IconPhone />
+                <span>Call</span>
+              </a>
+            ) : null}
+            {profile.personalEmail ? (
+              <a className="scan-v2-tile" href={`mailto:${profile.personalEmail}`}>
+                <IconMail />
+                <span>Email</span>
+              </a>
+            ) : null}
+            {hasPhotos ? (
+              <a className="scan-v2-tile" href="#photos">
+                <IconUser />
+                <span>Products</span>
+              </a>
+            ) : null}
           </div>
-        </section>
-      )}
+
+          {personalPhones.length > 1 && (
+            <div className="scan-v2-phones">
+              {personalPhones.map((phone) => (
+                <a key={phone} href={`tel:${phone}`}>
+                  <IconPhone /> {phone}
+                </a>
+              ))}
+            </div>
+          )}
+        </article>
+
+        {hasShopBlock && (
+          <section className="scan-v2-panel" id="shop">
+            <div className="scan-v2-panel-head">
+              <img src="/29-jewellery-logo.png" alt="" />
+              <div>
+                <h2>Shop locations</h2>
+                <p>{profile.shopName || '29 Jewellery'}</p>
+              </div>
+            </div>
+
+            {branches.map((branch, i) => {
+              const hasCoords =
+                branch.latitude != null &&
+                branch.longitude != null &&
+                !Number.isNaN(Number(branch.latitude)) &&
+                !Number.isNaN(Number(branch.longitude));
+              const place = String(
+                branch.address || branch.locationName || branch.name || ''
+              ).trim();
+              const mapUrl =
+                branch.googleMapLink ||
+                (hasCoords
+                  ? toGoogleMapsUrl(Number(branch.latitude), Number(branch.longitude))
+                  : toGoogleMapsQueryUrl(place));
+              const shopLabel = formatShopLabel(branch.shopNo);
+              const area = String(branch.name || '').trim();
+              const title =
+                [shopLabel, area || place].filter(Boolean).join(' · ') || 'Location';
+              const branchPhones = (
+                Array.isArray(branch.phones) && branch.phones.length
+                  ? branch.phones
+                  : branch.phone
+                    ? [branch.phone]
+                    : []
+              )
+                .map((p) => String(p || '').trim())
+                .filter(Boolean);
+
+              return (
+                <article className="scan-v2-branch" key={`${title}-${i}`}>
+                  <h3>{title}</h3>
+                  {shopLabel && place && place !== area ? <p>{place}</p> : null}
+                  {branchPhones.map((phone) => (
+                    <a className="scan-v2-inline-call" href={`tel:${phone}`} key={phone}>
+                      <IconPhone /> {phone}
+                    </a>
+                  ))}
+                  <LocationMap
+                    latitude={branch.latitude}
+                    longitude={branch.longitude}
+                    address={place}
+                    locationName={place}
+                    googleMapLink={branch.googleMapLink || mapUrl}
+                  />
+                </article>
+              );
+            })}
+          </section>
+        )}
+
+        {hasPhotos && (
+          <section className="scan-v2-panel" id="photos">
+            <div className="scan-v2-panel-head">
+              <h2>Best-selling products</h2>
+            </div>
+            <div className="scan-v2-photos">
+              {profile.photos.map((p) => (
+                <img key={p.id} src={assetUrl(p.url)} alt={p.originalName || 'Best seller'} />
+              ))}
+            </div>
+          </section>
+        )}
+
+        <footer className="scan-v2-foot">29 Jewellery QR System</footer>
+      </div>
     </div>
   );
 }

@@ -201,7 +201,7 @@ function renderScanHtml(profile) {
           ? `<p class="muted">${escapeHtml(place)}</p>`
           : '';
       return `
-        <article class="card branch">
+        <article class="branch">
           <h3>${escapeHtml(title)}</h3>
           ${addressLine}
           ${phoneLines}
@@ -217,13 +217,53 @@ function renderScanHtml(profile) {
 
   const photos = Array.isArray(profile.photos) ? profile.photos : [];
   const photosHtml = photos.length
-    ? `<section class="block"><h2>Best-selling products</h2><div class="photos">${photos
+    ? `<section class="panel" id="photos"><div class="panel-head"><h2>Best-selling products</h2></div><div class="photos">${photos
         .map(
           (p) =>
             `<img src="${escapeHtml(p.url)}" alt="${escapeHtml(p.originalName || 'Product')}" loading="lazy" />`
         )
         .join('')}</div></section>`
     : '';
+
+  const primaryPhone = personalPhones[0] || '';
+  const position = profile.position || profile.description || '';
+  const orbHtml = [
+    primaryPhone
+      ? `<a class="orb" href="sms:${escapeHtml(primaryPhone)}"><span class="orb-icon">${ICONS.phone}</span><small>Text</small></a>`
+      : '',
+    primaryPhone
+      ? `<a class="orb" href="tel:${escapeHtml(primaryPhone)}"><span class="orb-icon">${ICONS.phone}</span><small>Call</small></a>`
+      : '',
+    profile.personalEmail
+      ? `<a class="orb" href="mailto:${escapeHtml(profile.personalEmail)}"><span class="orb-icon">${ICONS.mail}</span><small>Email</small></a>`
+      : '',
+  ]
+    .filter(Boolean)
+    .join('');
+
+  const socialHtml = social
+    .map(
+      (item) =>
+        `<a class="${escapeHtml(item.tone)}" href="${escapeHtml(item.href)}" target="_blank" rel="noreferrer" aria-label="${escapeHtml(item.label)}">${item.icon}</a>`
+    )
+    .join('');
+
+  const gridHtml = [
+    hasShop
+      ? `<a class="tile" href="#shop"><span class="tile-ico">📍</span><span>Shop</span></a>`
+      : '',
+    primaryPhone
+      ? `<a class="tile" href="tel:${escapeHtml(primaryPhone)}"><span class="tile-ico">${ICONS.phone}</span><span>Call</span></a>`
+      : '',
+    profile.personalEmail
+      ? `<a class="tile" href="mailto:${escapeHtml(profile.personalEmail)}"><span class="tile-ico">${ICONS.mail}</span><span>Email</span></a>`
+      : '',
+    photos.length
+      ? `<a class="tile" href="#photos"><span class="tile-ico">◆</span><span>Products</span></a>`
+      : '',
+  ]
+    .filter(Boolean)
+    .join('');
 
   const leafletAssets = '';
 
@@ -271,153 +311,139 @@ function renderScanHtml(profile) {
   <title>${escapeHtml(profile.name || '29 Jewellery')} · Scan</title>
   ${leafletAssets}
   <style>
-    :root { color-scheme: light; }
     * { box-sizing: border-box; }
     body {
       margin: 0;
       font-family: "Segoe UI", system-ui, sans-serif;
-      background: #eef2f7;
-      color: #1e293b;
+      color: #10233a;
       line-height: 1.45;
-    }
-    .page {
-      max-width: 440px;
-      margin: 0 auto;
       min-height: 100vh;
-      background: #fff;
-      padding: 1.1rem 1.1rem 2.4rem;
-      border-left: 1px solid #e2e8f0;
-      border-right: 1px solid #e2e8f0;
+      background:
+        radial-gradient(circle at 12% 18%, rgba(61,143,209,.45), transparent 42%),
+        radial-gradient(circle at 88% 8%, rgba(20,90,150,.55), transparent 40%),
+        linear-gradient(165deg, #0a2744 0%, #124a7c 42%, #1d6aa8 72%, #e7f2fb 72%);
     }
-    .hero { text-align: center; padding: 0.6rem 0 1.1rem; }
+    .shell { max-width: 440px; margin: 0 auto; padding: 1rem 1rem 2.2rem; }
+    .brand { display:flex; align-items:center; gap:.65rem; color:#fff; margin-bottom:1.1rem; }
+    .brand img { width:42px; height:42px; object-fit:contain; border-radius:10px; background:#fff; padding:.2rem; }
+    .brand strong { display:block; font-size:.95rem; }
+    .brand small { opacity:.8; font-size:.72rem; }
+    .card {
+      position:relative; background:#fff; border-radius:22px; padding:3.4rem 1.15rem 1.25rem;
+      box-shadow: 0 18px 40px rgba(10,39,68,.22); text-align:center;
+    }
+    .avatar-wrap { position:absolute; left:50%; top:0; transform:translate(-50%,-48%); }
     .avatar {
-      width: 112px; height: 112px; border-radius: 999px; object-fit: cover;
-      border: 3px solid #fff; box-shadow: 0 8px 24px rgba(15,23,42,.12);
-      background: #f1f5f9; margin: 0 auto .85rem; display: block;
+      width:108px; height:108px; border-radius:999px; object-fit:cover; display:block;
+      border:4px solid #fff; box-shadow:0 10px 28px rgba(10,39,68,.25); background:#e8eef5;
     }
     .avatar.fallback {
       display:grid; place-items:center; font-weight:700; color:#64748b; font-size:2rem;
     }
-    .kicker {
-      margin: 0; color: #2563eb; font-size: .72rem; font-weight: 700;
-      letter-spacing: .08em; text-transform: uppercase;
+    h1 { margin:0; font-size:1.45rem; color:#0a2744; letter-spacing:-.02em; }
+    .role { margin:.3rem 0 0; color:#145a96; font-weight:700; font-size:.92rem; }
+    .tagline { margin:.35rem 0 0; color:#64748b; font-size:.82rem; }
+    .orbs { display:flex; justify-content:center; gap:1.1rem; margin-top:1.15rem; }
+    .orb { display:grid; gap:.35rem; justify-items:center; text-decoration:none; color:#0a2744; }
+    .orb-icon {
+      width:58px; height:58px; border-radius:999px; display:grid; place-items:center;
+      background:linear-gradient(160deg,#0a2744,#145a96); color:#fff;
+      box-shadow:0 10px 22px rgba(10,39,68,.28);
     }
-    h1 { margin: .2rem 0 0; font-size: 1.55rem; color: #152033; }
-    .role { margin: .35rem 0 0; color: #64748b; }
-    .block { margin-top: 1rem; }
-    .block h2 {
-      margin: 0 0 .7rem; font-size: .78rem; letter-spacing: .06em;
-      text-transform: uppercase; color: #64748b; display:flex; align-items:center; gap:.45rem;
+    .orb-icon svg { width:22px; height:22px; display:block; }
+    .orb small { font-size:.72rem; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:#475569; }
+    .social { display:flex; justify-content:center; flex-wrap:wrap; gap:.55rem; margin-top:1rem; }
+    .social a {
+      width:40px; height:40px; border-radius:12px; display:grid; place-items:center;
+      text-decoration:none; border:1px solid #dbe7f3; background:#f5f9fd; color:#0a2744;
     }
-    .logo {
-      width: 28px; height: 28px; object-fit: contain; border-radius: 6px;
-      border: 1px solid #e2e8f0; background: #fff;
+    .social a svg { width:16px; height:16px; }
+    .social a.fb { color:#1877f2; }
+    .social a.tt { color:#111; }
+    .social a.yt { color:#e11d48; }
+    .grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:.55rem; margin-top:1.1rem; }
+    .tile {
+      display:grid; gap:.3rem; justify-items:center; padding:.7rem .35rem; border-radius:14px;
+      border:1px solid #d7e6f5; background:linear-gradient(180deg,#f8fbfe,#eef6fc);
+      text-decoration:none; color:#0a2744; font-size:.7rem; font-weight:700;
     }
-    .card {
-      border: 1px solid #e2e8f0; border-radius: 14px; background: #fff;
-      padding: .85rem; display: grid; gap: .55rem;
+    .tile svg, .tile .tile-ico svg { width:18px; height:18px; color:#145a96; }
+    .panel {
+      margin-top:1rem; background:#fff; border-radius:18px; padding:1rem;
+      box-shadow:0 10px 28px rgba(10,39,68,.12);
     }
-    .row {
-      display:flex; align-items:center; gap:.7rem; text-decoration:none; color:inherit;
-      border: 1px solid #e2e8f0; border-radius: 12px; padding: .7rem .8rem; background:#fff;
-    }
-    .icon {
-      width: 34px; height: 34px; border-radius: 10px; display:grid; place-items:center; flex-shrink:0;
-    }
-    .icon svg { width: 15px; height: 15px; display:block; }
-    .icon.phone { color:#16a34a; background:#f0fdf4; }
-    .icon.mail { color:#2563eb; background:#eff6ff; }
-    .icon.fb { color:#1877f2; background:#edf4ff; }
-    .icon.tt { color:#111; background:#f4f4f5; }
-    .icon.yt { color:#e11d48; background:#fff1f2; }
-    .copy { min-width:0; flex:1; display:grid; gap:.08rem; }
-    .label { font-size: .68rem; color:#64748b; font-weight:600; }
-    .copy strong { font-size:.92rem; font-weight:700; word-break:break-word; line-height:1.3; }
-    .shop-name { margin: 0 0 .75rem; font-weight: 700; }
-    .branch h3 { margin: 0; font-size: 1rem; }
-    .phone { margin: 0; }
-    .phone a { color: #2563eb; text-decoration: none; font-weight: 600; }
+    .panel-head { display:flex; align-items:center; gap:.65rem; margin-bottom:.85rem; }
+    .panel-head img { width:34px; height:34px; object-fit:contain; border-radius:8px; border:1px solid #e2e8f0; background:#fff; }
+    .panel-head h2 { margin:0; font-size:.95rem; color:#0a2744; }
+    .panel-head p { margin:.1rem 0 0; color:#64748b; font-size:.8rem; }
+    .branch { padding:.75rem 0; border-top:1px solid #e8eef5; text-align:left; }
+    .branch:first-of-type { border-top:0; padding-top:0; }
+    .branch h3 { margin:0 0 .25rem; font-size:.95rem; }
+    .muted { margin:0 0 .45rem; color:#64748b; font-size:.85rem; }
+    .phone { margin:0; }
+    .phone a { color:#145a96; text-decoration:none; font-weight:700; }
     .map {
-      width: 100%;
-      height: 260px;
-      min-height: 260px;
-      border-radius: 12px;
-      overflow: hidden;
-      border: 1px solid #e2e8f0;
+      width:100%; height:240px; min-height:240px; border-radius:12px; overflow:hidden;
+      border:1px solid #e2e8f0; margin-top:.55rem;
     }
-    .map .gmap {
-      width: 100%;
-      height: 100%;
-      border: 0;
-      display: block;
-      background: #e8eef5;
-      z-index: 0;
+    .map .gmap { width:100%; height:100%; border:0; display:block; background:#e8eef5; }
+    .map-loading, .map-fallback {
+      display:grid; place-items:center; width:100%; height:100%; min-height:240px;
+      color:#64748b; font-size:.9rem; background:#e8eef5;
     }
-    .map.leaflet-container,
-    .map .leaflet-container {
-      width: 100% !important;
-      height: 240px !important;
-      min-height: 240px !important;
-      font: inherit;
-    }
-    .map-loading,
-    .map-fallback {
-      display: grid;
-      place-items: center;
-      width: 100%;
-      height: 100%;
-      min-height: 240px;
-      color: #64748b;
-      font-size: 0.9rem;
-      background: #e8eef5;
-    }
-    .actions { display:flex; flex-wrap:wrap; gap:.55rem; }
+    .actions { display:flex; flex-wrap:wrap; gap:.55rem; margin-top:.55rem; }
     .btn {
       display:inline-flex; align-items:center; justify-content:center;
-      padding: .65rem .9rem; border-radius: 10px; text-decoration:none; font-weight:600; font-size:.9rem;
+      padding:.65rem .9rem; border-radius:10px; text-decoration:none; font-weight:600; font-size:.9rem;
     }
-    .btn.primary { background:#2563eb; color:#fff; }
+    .btn.primary { background:#145a96; color:#fff; }
     .btn.ghost { background:#fff; color:#1e293b; border:1px solid #cbd5e1; }
-    .photos { display:grid; grid-template-columns: 1fr 1fr; gap:.55rem; }
-    .photos img {
-      width:100%; aspect-ratio:1; object-fit:cover; border-radius:12px; border:1px solid #e2e8f0;
-    }
+    .photos { display:grid; grid-template-columns:1fr 1fr; gap:.55rem; }
+    .photos img { width:100%; aspect-ratio:1; object-fit:cover; border-radius:12px; border:1px solid #e2e8f0; }
+    .foot { text-align:center; margin-top:1.1rem; color:#0a2744; font-size:.72rem; font-weight:700; letter-spacing:.04em; opacity:.75; }
+    @media (max-width:380px) { .grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
   </style>
 </head>
 <body>
-  <main class="page">
-    <header class="hero">
-      ${
-        profile.avatarUrl
-          ? `<img class="avatar" src="${escapeHtml(profile.avatarUrl)}" alt="${escapeHtml(profile.name)}" />`
-          : `<div class="avatar fallback" aria-hidden="true">${escapeHtml((profile.name || '?').slice(0, 1).toUpperCase())}</div>`
-      }
-      <p class="kicker">Personal</p>
-      <h1>${escapeHtml(profile.name || 'Profile')}</h1>
-      ${
-        profile.position || profile.description
-          ? `<p class="role">${escapeHtml(profile.position || profile.description)}</p>`
-          : ''
-      }
+  <main class="shell">
+    <header class="brand">
+      <img src="/29-jewellery-logo.png" alt="" />
+      <div><strong>29 Jewellery</strong><small>Digital QR Card</small></div>
     </header>
 
-    ${
-      personalRows.length
-        ? `<section class="block"><h2>Personal information</h2><div class="card">${personalRows.join('')}</div></section>`
-        : ''
-    }
+    <article class="card">
+      <div class="avatar-wrap">
+        ${
+          profile.avatarUrl
+            ? `<img class="avatar" src="${escapeHtml(profile.avatarUrl)}" alt="${escapeHtml(profile.name)}" />`
+            : `<div class="avatar fallback" aria-hidden="true">${escapeHtml((profile.name || '?').slice(0, 1).toUpperCase())}</div>`
+        }
+      </div>
+      <h1>${escapeHtml(profile.name || 'Profile')}</h1>
+      ${position ? `<p class="role">${escapeHtml(position)}</p>` : ''}
+      <p class="tagline">Proudly serving with 29 Jewellery</p>
+      ${orbHtml ? `<div class="orbs">${orbHtml}</div>` : ''}
+      ${socialHtml ? `<div class="social">${socialHtml}</div>` : ''}
+      ${gridHtml ? `<div class="grid">${gridHtml}</div>` : ''}
+    </article>
 
     ${
       hasShop
-        ? `<section class="block">
-            <h2><img class="logo" src="/29-jewellery-logo.png" alt="" /> 29 Jewellery</h2>
-            <p class="shop-name">${escapeHtml(profile.shopName || '29 Jewellery')}</p>
+        ? `<section class="panel" id="shop">
+            <div class="panel-head">
+              <img src="/29-jewellery-logo.png" alt="" />
+              <div>
+                <h2>Shop locations</h2>
+                <p>${escapeHtml(profile.shopName || '29 Jewellery')}</p>
+              </div>
+            </div>
             ${branchHtml}
           </section>`
         : ''
     }
 
     ${photosHtml}
+    <p class="foot">29 Jewellery QR System</p>
   </main>
   ${leafletBoot}
 </body>
