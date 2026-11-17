@@ -274,7 +274,7 @@ export default function SavedPage() {
                             size={48}
                             bgColor="#ffffff"
                             fgColor={p.qrFgColor || '#111111'}
-                            logoUrl={p.avatarUrl || ''}
+                            logoUrl="/29-jewellery-logo.png"
                             frame={p.qrFrame || 'none'}
                           />
                         </div>
