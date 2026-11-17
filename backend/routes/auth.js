@@ -102,6 +102,21 @@ router.get('/stats', requireAdmin, (_req, res) => {
   }
 });
 
+/** Staff: own QR scan analytics */
+router.get('/my-stats', requireAuth, (req, res) => {
+  try {
+    if (req.user.role !== 'staff' || !req.user.profileId) {
+      return res.status(403).json({ error: 'Staff QR is not linked' });
+    }
+    const stats = store.getProfileScanStats(req.user.profileId);
+    if (!stats) return res.status(404).json({ error: 'Profile not found' });
+    res.json(stats);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to load scan statistics' });
+  }
+});
+
 router.post('/users', requireAdmin, (req, res) => {
   try {
     const {

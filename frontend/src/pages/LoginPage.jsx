@@ -1,15 +1,14 @@
 import { useEffect, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
-import { getAuthUser, isAuthenticated, login, loginWithGoogle } from '../auth';
+import { getAuthUser, isAuthenticated, login } from '../auth';
 import { useI18n } from '../I18nContext';
-import GoogleSignInButton from '../components/GoogleSignInButton';
 
 const SLIDES = [
   {
     id: 'build-qr',
     image: '/carousel/qr-1.png',
-    title: 'Build staff QR cards',
-    text: 'Create and manage branded QR links for every shop and staff member.',
+    title: 'Build customer QR cards',
+    text: 'Create and manage branded QR links for every shop and customer.',
   },
   {
     id: 'scan-images',
@@ -21,7 +20,7 @@ const SLIDES = [
     id: 'scan-qr',
     image: '/carousel/qr-3.png',
     title: 'Scan and open instantly',
-    text: 'Point a phone at the staff QR and open the full profile in one tap.',
+    text: 'Point a phone at the customer QR and open the full profile in one tap.',
   },
 ];
 
@@ -62,14 +61,6 @@ export default function LoginPage() {
     setError('');
     setBusy(true);
     const result = await login(username, password, remember);
-    setBusy(false);
-    goAfterLogin(result);
-  }
-
-  async function onGoogleCredential(credential) {
-    setError('');
-    setBusy(true);
-    const result = await loginWithGoogle(credential, remember);
     setBusy(false);
     goAfterLogin(result);
   }
@@ -199,12 +190,6 @@ export default function LoginPage() {
                 {busy ? t('signingIn') : t('signIn')}
               </button>
             </form>
-
-            <div className="login-divider">
-              <span>o</span>
-            </div>
-
-            <GoogleSignInButton disabled={busy} onCredential={onGoogleCredential} />
 
             <p className="login-foot">{t('secureFoot')}</p>
           </div>

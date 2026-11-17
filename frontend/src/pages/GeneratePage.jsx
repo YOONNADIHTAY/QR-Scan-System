@@ -18,9 +18,7 @@ import {
 } from '../components/Icons';
 import usePublicBase from '../hooks/usePublicBase';
 import { isStaff } from '../auth';
-import { DEPARTMENT_OPTIONS } from '../constants/departments';
-
-const SHOP_NOS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
+import { SHOP_NOS } from '../constants/shops';
 
 function parseShopName(full) {
   const raw = String(full || '').trim();
@@ -42,8 +40,6 @@ function formatShopName(name, shopNo) {
 
 const empty = {
   name: '',
-  description: '',
-  department: '',
   personalPhone: '',
   personalEmail: '',
   includeShop: true,
@@ -64,6 +60,7 @@ function normalizeBranches(p) {
       const phones = normalizeBranchPhones(b);
       return {
         name: b.name || '',
+        shopNo: b.shopNo ? String(b.shopNo) : '',
         phone: phones.find((x) => x.trim()) || '',
         phones,
         address: b.address || b.locationName || '',
@@ -78,6 +75,7 @@ function normalizeBranches(p) {
   return [
     {
       name: p.locationName || '',
+      shopNo: '',
       phone: phones.find((x) => x.trim()) || '',
       phones,
       address: p.locationName || '',
@@ -132,8 +130,6 @@ export default function GeneratePage({ forcedId = null, staffMode = false }) {
         const shop = parseShopName(p.shopName || '29 Jewellery');
         setForm({
           name: p.name || '',
-          description: p.description || '',
-          department: p.department || p.description || '',
           personalPhone: p.personalPhone || '',
           personalEmail: p.personalEmail || '',
           includeShop: p.includeShop !== false,
@@ -227,8 +223,8 @@ export default function GeneratePage({ forcedId = null, staffMode = false }) {
     try {
       const fd = new FormData();
       fd.append('name', form.name.trim());
-      fd.append('description', form.description);
-      fd.append('department', form.department);
+      fd.append('description', '');
+      fd.append('department', '');
       fd.append('personalPhone', form.personalPhone.trim());
       fd.append('personalEmail', form.personalEmail.trim());
       fd.append('includeShop', form.includeShop ? 'true' : 'false');
@@ -255,7 +251,6 @@ export default function GeneratePage({ forcedId = null, staffMode = false }) {
       fd.append('removePhotoIds', JSON.stringify(removePhotoIds));
       fd.append('removeAvatar', removeAvatar ? 'true' : 'false');
       if (!isEdit && !savedId && !staffView) {
-        // Email on the QR = Google Sign-In account (no separate staff password)
         const googleEmail = (form.personalEmail || '').trim();
         if (googleEmail) {
           fd.append('createStaffLogin', 'true');
@@ -272,7 +267,7 @@ export default function GeneratePage({ forcedId = null, staffMode = false }) {
           : await createProfile(fd);
 
       if (saved.staffLoginError) {
-        setError(`QR saved, but staff login failed: ${saved.staffLoginError}`);
+        setError(`QR saved, but customer login failed: ${saved.staffLoginError}`);
       }
 
       setSavedId(saved.id);
@@ -285,8 +280,6 @@ export default function GeneratePage({ forcedId = null, staffMode = false }) {
       setRemovePhotoIds([]);
       setForm((prev) => ({
         ...prev,
-        description: saved.description ?? prev.description,
-        department: saved.department || saved.description || prev.department,
         qrFgColor: saved.qrFgColor || prev.qrFgColor,
         qrBgColor: saved.qrBgColor || prev.qrBgColor,
         qrFrame: saved.qrFrame || prev.qrFrame,
@@ -316,7 +309,7 @@ export default function GeneratePage({ forcedId = null, staffMode = false }) {
   async function handleSaveQrToList() {
     const saved = await saveProfile();
     if (saved?.id) {
-      navigate(staffView ? '/my-qr' : '/saved');
+      navigate(staffView ? '/my-qr' : `/record/${saved.id || savedId || id}`);
     }
   }
 
@@ -329,13 +322,13 @@ export default function GeneratePage({ forcedId = null, staffMode = false }) {
           {staffView
             ? 'My QR design'
             : isEdit
-              ? 'Edit Staff Record'
-              : 'Create Staff Record'}
+              ? 'Edit Customer Record'
+              : 'Create Customer Record'}
         </h2>
         <p>
           {staffView
             ? 'Update your details and customize your QR look.'
-            : 'Enter staff and shop details to generate a scan profile.'}
+            : 'Enter customer and shop details to generate a scan profile.'}
         </p>
       </div>
       <header className="page-toolbar">
@@ -419,35 +412,6 @@ export default function GeneratePage({ forcedId = null, staffMode = false }) {
                 required
                 value={form.name}
                 onChange={(e) => setField('name', e.target.value)}
-              />
-            </div>
-            <div className="field">
-              <label htmlFor="department">Department</label>
-              <select
-                id="department"
-                className="field-select"
-                value={form.department}
-                onChange={(e) => setField('department', e.target.value)}
-                aria-label="Department"
-              >
-                <option value="">Select department</option>
-                {DEPARTMENT_OPTIONS.map((opt) => (
-                  <option key={opt} value={opt}>
-                    {opt}
-                  </option>
-                ))}
-                {form.department &&
-                !DEPARTMENT_OPTIONS.includes(form.department) ? (
-                  <option value={form.department}>{form.department}</option>
-                ) : null}
-              </select>
-            </div>
-            <div className="field">
-              <label htmlFor="description">Role / title</label>
-              <input
-                id="description"
-                value={form.description}
-                onChange={(e) => setField('description', e.target.value)}
               />
             </div>
             <div className="field">

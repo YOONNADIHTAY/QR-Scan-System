@@ -182,9 +182,19 @@ function renderScanHtml(profile) {
         place || coords
           ? `<div id="${mapId}" class="map" data-place="${escapeHtml(place)}" role="img" aria-label="Map of ${escapeHtml(place || 'shop')}"><div class="map-loading">Loading map…</div></div>`
           : '';
+      const shopNo = String(branch.shopNo || '').trim();
+      const shopLabel = shopNo ? `Shop ${shopNo}` : '';
+      const area = String(branch.name || '').trim();
+      const title =
+        [shopLabel, area || place].filter(Boolean).join(' · ') || 'Location';
+      const addressLine =
+        shopLabel && place && place !== area
+          ? `<p class="muted">${escapeHtml(place)}</p>`
+          : '';
       return `
         <article class="card branch">
-          ${place ? `<h3>${escapeHtml(place)}</h3>` : ''}
+          <h3>${escapeHtml(title)}</h3>
+          ${addressLine}
           ${phoneLines}
           ${mapBlock}
           <div class="actions">
@@ -206,69 +216,39 @@ function renderScanHtml(profile) {
         .join('')}</div></section>`
     : '';
 
-  const leafletAssets = needsMap
-    ? `
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>`
-    : '';
+  const leafletAssets = '';
 
   const leafletBoot = needsMap
     ? `
   <script>
     (function () {
       var markers = ${JSON.stringify(mapMarkers)};
-      var icon = L.icon({
-        iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-        iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-        shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-        iconSize: [25, 41],
-        iconAnchor: [12, 41],
-        popupAnchor: [1, -34],
-        shadowSize: [41, 41]
-      });
 
-      function showFallback(el, message) {
-        el.innerHTML = '<div class="map-fallback"><span>' + message + '</span></div>';
+      function shopQuery(place) {
+        var q = String(place || '').trim();
+        if (!q) return '';
+        if (/29\\s*jewellery/i.test(q)) return q;
+        return '29 Jewellery ' + q + ', Yangon';
       }
 
-      function renderMap(el, lat, lng, label) {
-        el.innerHTML = '';
-        var map = L.map(el, { scrollWheelZoom: false, attributionControl: true }).setView([lat, lng], 16);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          maxZoom: 19,
-          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
-        }).addTo(map);
-        L.marker([lat, lng], { icon: icon }).addTo(map).bindPopup(label || 'Shop location');
-        setTimeout(function () { map.invalidateSize(); }, 80);
+      function embedUrl(item) {
+        if (item.lat != null && item.lng != null) {
+          return 'https://maps.google.com/maps?q=' + item.lat + ',' + item.lng + '&z=17&hl=en&output=embed';
+        }
+        var q = shopQuery(item.place || item.label || '');
+        if (!q) return '';
+        return 'https://maps.google.com/maps?q=' + encodeURIComponent(q) + '&z=16&hl=en&output=embed';
       }
 
       markers.forEach(function (item) {
         var el = document.getElementById(item.id);
         if (!el) return;
-
-        if (item.lat != null && item.lng != null) {
-          renderMap(el, item.lat, item.lng, item.label);
+        var src = embedUrl(item);
+        if (!src) {
+          el.innerHTML = '<div class="map-fallback"><span>Map unavailable</span></div>';
           return;
         }
-
-        var place = item.place || el.getAttribute('data-place') || '';
-        if (!place) {
-          showFallback(el, 'Map unavailable');
-          return;
-        }
-
-        fetch('/api/geocode?q=' + encodeURIComponent(place))
-          .then(function (r) { return r.ok ? r.json() : null; })
-          .then(function (data) {
-            if (data && data.lat != null && data.lng != null) {
-              renderMap(el, Number(data.lat), Number(data.lng), item.label || place);
-            } else {
-              showFallback(el, 'Map unavailable');
-            }
-          })
-          .catch(function () {
-            showFallback(el, 'Map unavailable');
-          });
+        el.innerHTML = '<iframe class="gmap" title="Shop map" src="' + src + '" loading="lazy" allowfullscreen referrerpolicy="no-referrer-when-downgrade"></iframe>';
       });
     })();
   </script>`
@@ -350,11 +330,17 @@ function renderScanHtml(profile) {
     .phone a { color: #2563eb; text-decoration: none; font-weight: 600; }
     .map {
       width: 100%;
-      height: 240px;
-      min-height: 240px;
+      height: 260px;
+      min-height: 260px;
       border-radius: 12px;
       overflow: hidden;
       border: 1px solid #e2e8f0;
+    }
+    .map .gmap {
+      width: 100%;
+      height: 100%;
+      border: 0;
+      display: block;
       background: #e8eef5;
       z-index: 0;
     }
@@ -399,7 +385,6 @@ function renderScanHtml(profile) {
       }
       <p class="kicker">Personal</p>
       <h1>${escapeHtml(profile.name || 'Profile')}</h1>
-      ${profile.description ? `<p class="role">${escapeHtml(profile.description)}</p>` : ''}
     </header>
 
     ${

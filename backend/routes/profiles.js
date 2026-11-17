@@ -109,8 +109,13 @@ async function enrichBranches(branches) {
       out.push(b);
       continue;
     }
-    const q = b.address || b.locationName || b.name;
-    const coords = await geocodeQuery(q);
+    const raw = String(b.address || b.locationName || b.name || '').trim();
+    const q = raw
+      ? /29\s*jewellery/i.test(raw)
+        ? raw
+        : `29 Jewellery ${raw}, Yangon, Myanmar`
+      : '';
+    const coords = q ? await geocodeQuery(q) : null;
     if (coords) {
       out.push({
         ...b,
@@ -119,6 +124,16 @@ async function enrichBranches(branches) {
         googleMapLink:
           b.googleMapLink ||
           `https://www.google.com/maps?q=${coords.lat},${coords.lng}`,
+      });
+    } else if (raw) {
+      // Keep a Google search link so scan page can embed the street even without lat/lng
+      out.push({
+        ...b,
+        googleMapLink:
+          b.googleMapLink ||
+          `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+            /29\s*jewellery/i.test(raw) ? raw : `29 Jewellery ${raw}, Yangon`
+          )}`,
       });
     } else {
       out.push(b);
@@ -248,6 +263,17 @@ router.get('/:id', requireAuth, requireProfileAccess, (req, res) => {
   }
 });
 
+router.get('/:id/stats', requireAuth, requireProfileAccess, (req, res) => {
+  try {
+    const stats = store.getProfileScanStats(req.params.id);
+    if (!stats) return res.status(404).json({ error: 'Profile not found' });
+    res.json(stats);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to load scan statistics' });
+  }
+});
+
 router.post('/', requireAdmin, uploadFields, async (req, res) => {
   try {
     const id = randomUUID();
@@ -327,9 +353,7 @@ router.post('/', requireAdmin, uploadFields, async (req, res) => {
 
     let staffUser = null;
     // Staff access = profile Email (Gmail). Sign in with Google matches this address.
-    const googleLoginEmail = String(
-      personalEmail || staffEmail || ''
-    )
+    const googleLoginEmail = String(personalEmail || staffEmail || '')
       .trim()
       .toLowerCase();
     const skipStaffLogin =
@@ -338,14 +362,12 @@ router.post('/', requireAdmin, uploadFields, async (req, res) => {
       try {
         staffUser = store.createUser({
           email: googleLoginEmail,
-          // Google-only — password login not used
           password: String(staffPassword || 'google:pending'),
           name: name.trim(),
           role: 'staff',
           profileId: id,
         });
       } catch (err) {
-        // Profile already created; surface login issue clearly
         return res.status(201).json({
           ...mapProfile(store.getProfile(id)),
           staffLoginError: err.message,

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { getProfile } from '../api';
+import { getPublicScanProfile } from '../api';
+import { assetUrl } from '../apiBase';
 import LocationMap from '../components/LocationMap';
 import {
   IconFacebook,
@@ -12,6 +13,7 @@ import {
   IconUser,
   IconYouTube,
 } from '../components/Icons';
+import { formatShopLabel } from '../constants/shops';
 import { toGoogleMapsQueryUrl, toGoogleMapsUrl } from '../utils/maps';
 
 export default function ScanPage() {
@@ -35,7 +37,7 @@ export default function ScanPage() {
     setError('');
     setProfile(null);
 
-    getProfile(id, { signal: controller.signal })
+    getPublicScanProfile(id, { signal: controller.signal })
       .then((data) => {
         if (!cancelled) setProfile(data);
       })
@@ -130,7 +132,11 @@ export default function ScanPage() {
       <section className="employee-hero">
         <div className="employee-photo-wrap">
           {profile.avatarUrl ? (
-            <img className="employee-avatar-img" src={profile.avatarUrl} alt={profile.name} />
+            <img
+              className="employee-avatar-img"
+              src={assetUrl(profile.avatarUrl)}
+              alt={profile.name}
+            />
           ) : (
             <div className="employee-avatar" aria-hidden="true">
               <IconUser />
@@ -140,7 +146,6 @@ export default function ScanPage() {
         <div className="employee-identity">
           <p className="hero-kicker">Personal</p>
           <h1>{profile.name}</h1>
-          {profile.description && <p className="employee-role">{profile.description}</p>}
         </div>
       </section>
 
@@ -225,7 +230,10 @@ export default function ScanPage() {
                   (hasCoords
                     ? toGoogleMapsUrl(Number(branch.latitude), Number(branch.longitude))
                     : toGoogleMapsQueryUrl(place));
-                const title = place || 'Location';
+                const shopLabel = formatShopLabel(branch.shopNo);
+                const area = String(branch.name || '').trim();
+                const title =
+                  [shopLabel, area || place].filter(Boolean).join(' · ') || 'Location';
 
                 const branchPhones = (
                   Array.isArray(branch.phones) && branch.phones.length
@@ -239,7 +247,10 @@ export default function ScanPage() {
 
                 return (
                   <article className="branch-scan-card" key={`${title}-${i}`}>
-                    {place && <h3>{place}</h3>}
+                    <h3>{title}</h3>
+                    {shopLabel && place && place !== area ? (
+                      <p className="branch-scan-address">{place}</p>
+                    ) : null}
                     {branchPhones.length > 0 && (
                       <div className="branch-phone-list">
                         {branchPhones.map((phone) => (
@@ -278,7 +289,11 @@ export default function ScanPage() {
           <h2>Best-selling products</h2>
           <div className="scan-photos">
             {profile.photos.map((p) => (
-              <img key={p.id} src={p.url} alt={p.originalName || 'Best seller'} />
+              <img
+                key={p.id}
+                src={assetUrl(p.url)}
+                alt={p.originalName || 'Best seller'}
+              />
             ))}
           </div>
         </section>

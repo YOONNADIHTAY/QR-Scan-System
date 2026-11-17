@@ -1,0 +1,17 @@
+{
+  "appId": "com.jewellery29.qr",
+  "appName": "29 Jewellery QR",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https",
+    "cleartext": true
+  },
+  "android": {
+    "allowMixedContent": true
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 0
+    }
+  }
+}

@@ -3,7 +3,10 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import { I18nProvider } from './I18nContext';
+import { initNativeShell } from './capacitor';
 import './index.css';
+
+initNativeShell();
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

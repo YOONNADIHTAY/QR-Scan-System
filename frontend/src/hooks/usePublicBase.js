@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { apiUrl } from '../apiBase';
 
 const STORAGE_KEY = 'qr_public_base';
 
@@ -14,7 +15,7 @@ export default function usePublicBase() {
   const [serverPublicUrl, setServerPublicUrl] = useState('');
 
   useEffect(() => {
-    fetch('/api/config')
+    fetch(apiUrl('/api/config'))
       .then((r) => (r.ok ? r.json() : null))
       .then((cfg) => {
         if (!cfg) return;

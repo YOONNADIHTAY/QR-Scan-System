@@ -1,3 +1,5 @@
+import { apiUrl } from './apiBase';
+
 const AUTH_KEY = 'qr_auth_session';
 
 function readSession() {
@@ -68,17 +70,17 @@ function saveLoginSession(data, remember = true) {
 }
 
 export async function login(username, password, remember = true) {
-  const email = String(username || '').trim().toLowerCase();
+  const loginId = String(username || '').trim();
   const pass = String(password || '');
-  if (!email || !pass) {
+  if (!loginId || !pass) {
     return { ok: false, error: 'Email and password are required' };
   }
 
   try {
-    const res = await fetch('/api/auth/login', {
+    const res = await fetch(apiUrl('/api/auth/login'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password: pass }),
+      body: JSON.stringify({ username: loginId, password: pass }),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
@@ -94,10 +96,10 @@ export async function login(username, password, remember = true) {
 export async function loginWithStaffEmail(username, remember = true) {
   const email = String(username || '').trim().toLowerCase();
   if (!email) {
-    return { ok: false, error: 'Enter the Gmail from your staff QR Email field' };
+    return { ok: false, error: 'Enter the Gmail from your customer QR Email field' };
   }
   try {
-    const res = await fetch('/api/auth/staff-email', {
+    const res = await fetch(apiUrl('/api/auth/staff-email'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email }),
@@ -121,7 +123,7 @@ export async function loginWithGoogle(credential, remember = true) {
   const isJwt = value.split('.').length === 3;
   const body = isJwt ? { idToken: value } : { accessToken: value };
   try {
-    const res = await fetch('/api/auth/google', {
+    const res = await fetch(apiUrl('/api/auth/google'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -149,7 +151,7 @@ export async function logout() {
   const token = getToken();
   try {
     if (token) {
-      await fetch('/api/auth/logout', {
+      await fetch(apiUrl('/api/auth/logout'), {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       });

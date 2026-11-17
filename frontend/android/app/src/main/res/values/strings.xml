@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">29 Jewellery QR</string>
+    <string name="title_activity_main">29 Jewellery QR</string>
+    <string name="package_name">com.jewellery29.qr</string>
+    <string name="custom_url_scheme">com.jewellery29.qr</string>
+</resources>

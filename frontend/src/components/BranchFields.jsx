@@ -1,6 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { IconPhone, IconTrash } from './Icons';
-import { toGoogleMapsQueryUrl, toGoogleMapsUrl } from '../utils/maps';
+import { SHOP_NOS, formatShopLabel } from '../constants/shops';
+import {
+  geocodeAddress,
+  toGoogleMapsQueryUrl,
+  toGoogleMapsUrl,
+} from '../utils/maps';
 
 export function normalizeBranchPhones(branch) {
   if (Array.isArray(branch?.phones) && branch.phones.length) {
@@ -13,6 +18,7 @@ export function normalizeBranchPhones(branch) {
 export function emptyBranch() {
   return {
     name: '',
+    shopNo: '',
     phone: '',
     phones: [''],
     address: '',
@@ -23,13 +29,27 @@ export function emptyBranch() {
   };
 }
 
+function mapsQueryForAddress(address) {
+  const q = String(address || '').trim();
+  if (!q) return '';
+  if (/29\s*jewellery/i.test(q)) return toGoogleMapsQueryUrl(q);
+  return toGoogleMapsQueryUrl(`29 Jewellery ${q}, Yangon`);
+}
+
 export default function BranchFields({ branch, index, onChange, onRemove, canRemove }) {
   const [query, setQuery] = useState(branch.name || '');
+  const [geoBusy, setGeoBusy] = useState(false);
+  const [geoNote, setGeoNote] = useState('');
   const phones = normalizeBranchPhones(branch);
+  const geoTimer = useRef(null);
 
   useEffect(() => {
     setQuery(branch.name || '');
   }, [branch.name]);
+
+  useEffect(() => () => {
+    if (geoTimer.current) window.clearTimeout(geoTimer.current);
+  }, []);
 
   function setPhones(nextPhones) {
     const cleaned = nextPhones.length ? nextPhones : [''];
@@ -48,6 +68,49 @@ export default function BranchFields({ branch, index, onChange, onRemove, canRem
     });
   }
 
+  function applyAddress(address, { geocode = false } = {}) {
+    const trimmed = String(address || '').trim();
+    const next = {
+      ...branch,
+      address,
+      locationName: address,
+      name: query.trim() || branch.name,
+      // Reset old pin when street text changes so map follows the new address
+      latitude: null,
+      longitude: null,
+      googleMapLink: mapsQueryForAddress(trimmed),
+    };
+    onChange(index, next);
+
+    if (!geocode || !trimmed) {
+      setGeoNote('');
+      return;
+    }
+
+    if (geoTimer.current) window.clearTimeout(geoTimer.current);
+    geoTimer.current = window.setTimeout(async () => {
+      setGeoBusy(true);
+      setGeoNote('Finding shop on Google Maps…');
+      const search = /29\s*jewellery/i.test(trimmed)
+        ? trimmed
+        : `29 Jewellery ${trimmed}, Yangon`;
+      const coords = await geocodeAddress(search);
+      if (coords) {
+        onChange(index, {
+          ...next,
+          latitude: coords.lat,
+          longitude: coords.lng,
+          googleMapLink: toGoogleMapsUrl(coords.lat, coords.lng),
+        });
+        setGeoNote('Map location found — will show on scan page.');
+      } else {
+        // Keep Google search link so scan page still embeds the address query
+        setGeoNote('Using street name for Google Maps on scan page.');
+      }
+      setGeoBusy(false);
+    }, 450);
+  }
+
   return (
     <div className="branch-card">
       <div className="branch-card-head">
@@ -62,29 +125,41 @@ export default function BranchFields({ branch, index, onChange, onRemove, canRem
       <div className="form-grid">
         <div className="field">
           <label>Branch area</label>
-          <input value={query} onChange={(e) => setArea(e.target.value)} />
+          <div className="shop-name-row">
+            <input value={query} onChange={(e) => setArea(e.target.value)} placeholder="e.g. Tamwe" />
+            <label className="shop-no-wrap">
+              <span>Shop</span>
+              <select
+                value={branch.shopNo || ''}
+                onChange={(e) => onChange(index, { ...branch, shopNo: e.target.value })}
+                aria-label="Shop number"
+              >
+                <option value="">—</option>
+                {SHOP_NOS.map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          {branch.shopNo ? (
+            <p className="shop-name-preview">{formatShopLabel(branch.shopNo)}</p>
+          ) : null}
         </div>
 
         <div className="field">
           <label>Address</label>
           <textarea
             value={branch.address || branch.locationName || ''}
-            onChange={(e) => {
-              const address = e.target.value;
-              onChange(index, {
-                ...branch,
-                address,
-                locationName: address,
-                name: query.trim() || branch.name,
-                googleMapLink:
-                  branch.latitude != null
-                    ? branch.googleMapLink ||
-                      toGoogleMapsUrl(branch.latitude, branch.longitude)
-                    : toGoogleMapsQueryUrl(address),
-              });
-            }}
+            onChange={(e) => applyAddress(e.target.value, { geocode: false })}
+            onBlur={(e) => applyAddress(e.target.value, { geocode: true })}
+            placeholder="e.g. U Chit Maung Rd, Tamwe"
             rows={3}
           />
+          {(geoBusy || geoNote) && (
+            <p className="field-hint">{geoBusy ? 'Finding shop on Google Maps…' : geoNote}</p>
+          )}
         </div>
 
         <div className="field field-phones">

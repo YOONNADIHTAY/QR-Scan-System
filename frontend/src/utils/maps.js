@@ -1,3 +1,5 @@
+import { apiUrl } from '../apiBase';
+
 export function toGoogleMapsUrl(lat, lng) {
   return `https://www.google.com/maps?q=${lat},${lng}`;
 }
@@ -63,7 +65,7 @@ export async function geocodeAddress(query) {
   const q = String(query || '').trim();
   if (!q) return null;
   try {
-    const res = await fetch(`/api/geocode?q=${encodeURIComponent(q)}`);
+    const res = await fetch(apiUrl(`/api/geocode?q=${encodeURIComponent(q)}`));
     if (!res.ok) return null;
     const data = await res.json();
     const lat = Number(data?.lat);

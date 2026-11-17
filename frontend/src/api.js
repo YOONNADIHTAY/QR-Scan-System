@@ -1,7 +1,8 @@
 import { authHeaders } from './auth';
+import { apiUrl } from './apiBase';
 
-const API = '/api/profiles';
-const AUTH_API = '/api/auth';
+const API = () => apiUrl('/api/profiles');
+const AUTH_API = () => apiUrl('/api/auth');
 
 async function readJson(res) {
   const text = await res.text();
@@ -20,18 +21,24 @@ async function readJson(res) {
 }
 
 export async function getProfiles() {
-  const res = await fetch(API, { headers: authHeaders() });
+  const res = await fetch(API(), { headers: authHeaders() });
   return readJson(res);
 }
 
 export async function getProfile(id, options = {}) {
   const headers = authHeaders(options.headers || {});
-  const res = await fetch(`${API}/${id}`, { ...options, headers });
+  const res = await fetch(`${API()}/${id}`, { ...options, headers });
+  return readJson(res);
+}
+
+/** Public camera-scan profile — no auth (avoids "own QR only" when logged in) */
+export async function getPublicScanProfile(id, options = {}) {
+  const res = await fetch(apiUrl(`/api/scan/${id}`), { ...options });
   return readJson(res);
 }
 
 export async function createProfile(formData) {
-  const res = await fetch(API, {
+  const res = await fetch(API(), {
     method: 'POST',
     headers: authHeaders(),
     body: formData,
@@ -40,7 +47,7 @@ export async function createProfile(formData) {
 }
 
 export async function updateProfile(id, formData) {
-  const res = await fetch(`${API}/${id}`, {
+  const res = await fetch(`${API()}/${id}`, {
     method: 'PUT',
     headers: authHeaders(),
     body: formData,
@@ -49,7 +56,7 @@ export async function updateProfile(id, formData) {
 }
 
 export async function deleteProfile(id) {
-  const res = await fetch(`${API}/${id}`, {
+  const res = await fetch(`${API()}/${id}`, {
     method: 'DELETE',
     headers: authHeaders(),
   });
@@ -57,12 +64,12 @@ export async function deleteProfile(id) {
 }
 
 export async function getUsers() {
-  const res = await fetch(`${AUTH_API}/users`, { headers: authHeaders() });
+  const res = await fetch(`${AUTH_API()}/users`, { headers: authHeaders() });
   return readJson(res);
 }
 
 export async function createUser(payload) {
-  const res = await fetch(`${AUTH_API}/users`, {
+  const res = await fetch(`${AUTH_API()}/users`, {
     method: 'POST',
     headers: authHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify(payload),
@@ -71,7 +78,7 @@ export async function createUser(payload) {
 }
 
 export async function updateUser(id, payload) {
-  const res = await fetch(`${AUTH_API}/users/${id}`, {
+  const res = await fetch(`${AUTH_API()}/users/${id}`, {
     method: 'PUT',
     headers: authHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify(payload),
@@ -80,7 +87,7 @@ export async function updateUser(id, payload) {
 }
 
 export async function deleteUser(id) {
-  const res = await fetch(`${AUTH_API}/users/${id}`, {
+  const res = await fetch(`${AUTH_API()}/users/${id}`, {
     method: 'DELETE',
     headers: authHeaders(),
   });
@@ -92,7 +99,7 @@ export async function setUserActive(id, active) {
 }
 
 export async function setProfileActive(id, active) {
-  const res = await fetch(`${API}/${id}/active`, {
+  const res = await fetch(`${API()}/${id}/active`, {
     method: 'PATCH',
     headers: authHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({ active: Boolean(active) }),
@@ -101,12 +108,22 @@ export async function setProfileActive(id, active) {
 }
 
 export async function getAdminStats() {
-  const res = await fetch(`${AUTH_API}/stats`, { headers: authHeaders() });
+  const res = await fetch(`${AUTH_API()}/stats`, { headers: authHeaders() });
+  return readJson(res);
+}
+
+export async function getMyScanStats() {
+  const res = await fetch(`${AUTH_API()}/my-stats`, { headers: authHeaders() });
+  return readJson(res);
+}
+
+export async function getProfileScanStats(id) {
+  const res = await fetch(`${API()}/${id}/stats`, { headers: authHeaders() });
   return readJson(res);
 }
 
 export async function updateProfileDesign(id, formData) {
-  const res = await fetch(`${API}/${id}/design`, {
+  const res = await fetch(`${API()}/${id}/design`, {
     method: 'PATCH',
     headers: authHeaders(),
     body: formData,

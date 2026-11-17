@@ -1,24 +1,20 @@
-import { useEffect, useState } from 'react';
-import { MapContainer, Marker, TileLayer } from 'react-leaflet';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+import { useEffect, useMemo, useState } from 'react';
 import {
   geocodeAddress,
   toGoogleDirectionsQueryUrl,
   toGoogleDirectionsUrl,
+  toGoogleEmbedQueryUrl,
+  toGoogleEmbedUrl,
   toGoogleMapsQueryUrl,
   toGoogleMapsUrl,
 } from '../utils/maps';
 
-const markerIcon = L.icon({
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-});
+function shopSearchQuery(place) {
+  const q = String(place || '').trim();
+  if (!q) return '';
+  if (/29\s*jewellery/i.test(q)) return q;
+  return `29 Jewellery ${q}, Yangon`;
+}
 
 export default function LocationMap({
   latitude,
@@ -28,6 +24,7 @@ export default function LocationMap({
   googleMapLink,
 }) {
   const place = String(address || locationName || '').trim();
+  const searchQ = shopSearchQuery(place);
   const initialLat = Number(latitude);
   const initialLng = Number(longitude);
   const hasInitial =
@@ -36,82 +33,76 @@ export default function LocationMap({
   const [coords, setCoords] = useState(
     hasInitial ? { lat: initialLat, lng: initialLng } : null
   );
-  const [loading, setLoading] = useState(!hasInitial && Boolean(place));
 
   useEffect(() => {
     if (hasInitial) {
       setCoords({ lat: initialLat, lng: initialLng });
-      setLoading(false);
-      return;
+      return undefined;
     }
     if (!place) {
       setCoords(null);
-      setLoading(false);
       return undefined;
     }
 
     let cancelled = false;
-    setLoading(true);
-    geocodeAddress(place)
+    geocodeAddress(searchQ || place)
       .then((result) => {
-        if (!cancelled) setCoords(result);
+        if (!cancelled && result) setCoords(result);
       })
-      .catch(() => {
-        if (!cancelled) setCoords(null);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+      .catch(() => {});
 
     return () => {
       cancelled = true;
     };
-  }, [hasInitial, initialLat, initialLng, place]);
+  }, [hasInitial, initialLat, initialLng, place, searchQ]);
 
-  if (!coords && !place && !googleMapLink) return null;
+  const embedUrl = useMemo(() => {
+    if (coords) return toGoogleEmbedUrl(coords.lat, coords.lng, 17, false);
+    if (searchQ || place) return toGoogleEmbedQueryUrl(searchQ || place, 16, false);
+    return '';
+  }, [coords, searchQ, place]);
 
   const mapsUrl =
     googleMapLink ||
-    (coords ? toGoogleMapsUrl(coords.lat, coords.lng) : toGoogleMapsQueryUrl(place));
+    (coords
+      ? toGoogleMapsUrl(coords.lat, coords.lng)
+      : toGoogleMapsQueryUrl(searchQ || place));
   const directionsUrl = coords
     ? toGoogleDirectionsUrl(coords.lat, coords.lng)
-    : toGoogleDirectionsQueryUrl(place);
+    : toGoogleDirectionsQueryUrl(searchQ || place);
+
+  if (!embedUrl && !mapsUrl) return null;
 
   return (
     <div className="scan-location-map">
       <div className="scan-map-classic">
-        {coords ? (
-          <MapContainer
-            key={`${coords.lat},${coords.lng}`}
-            center={[coords.lat, coords.lng]}
-            zoom={16}
-            scrollWheelZoom={false}
-            className="scan-leaflet-map"
-          >
-            <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            />
-            <Marker position={[coords.lat, coords.lng]} icon={markerIcon} />
-          </MapContainer>
+        {embedUrl ? (
+          <iframe
+            className="scan-google-embed"
+            title={place || 'Shop map'}
+            src={embedUrl}
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+            allowFullScreen
+          />
         ) : (
-          <div className={`scan-map-photo-fallback ${loading ? 'is-loading' : ''}`}>
-            <span>{loading ? 'Loading map…' : 'Map unavailable'}</span>
+          <div className="scan-map-photo-fallback">
+            <span>Map unavailable</span>
           </div>
         )}
       </div>
 
       <div className="map-actions">
-        {mapsUrl && (
+        {mapsUrl ? (
           <a className="btn btn-primary" href={mapsUrl} target="_blank" rel="noreferrer">
             Open in Google Maps
           </a>
-        )}
-        {directionsUrl && (
+        ) : null}
+        {directionsUrl ? (
           <a className="btn btn-ghost" href={directionsUrl} target="_blank" rel="noreferrer">
             Get directions
           </a>
-        )}
+        ) : null}
       </div>
     </div>
   );

@@ -212,6 +212,15 @@ const store = {
     return load().users.find((u) => u.id === id) || null;
   },
 
+  findUserByProfileId(profileId) {
+    if (!profileId) return null;
+    return (
+      load().users.find(
+        (u) => u.role === 'staff' && u.profileId === profileId
+      ) || null
+    );
+  },
+
   createUser({ email, password, name, role, profileId }) {
     const data = load();
     const key = String(email || '').trim().toLowerCase();
@@ -305,6 +314,87 @@ const store = {
       totalScans,
       scansToday,
       byProfile,
+    };
+  },
+
+  getProfileScanStats(profileId) {
+    const data = load();
+    const profile = data.profiles.find((p) => p.id === profileId);
+    if (!profile) return null;
+
+    const scans = data.scans
+      .filter((s) => s.profileId === profileId)
+      .slice()
+      .sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')));
+
+    const now = new Date();
+    const todayKey = now.toISOString().slice(0, 10);
+    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const dayMs = 24 * 60 * 60 * 1000;
+
+    const todayCount = scans.filter((s) =>
+      String(s.at || '').startsWith(todayKey)
+    ).length;
+    const weekCount = scans.filter((s) => {
+      const t = Date.parse(s.at || '');
+      return Number.isFinite(t) && t >= weekAgo.getTime();
+    }).length;
+
+    const last7 = [];
+    for (let i = 6; i >= 0; i -= 1) {
+      const d = new Date(now.getTime() - i * dayMs);
+      const key = d.toISOString().slice(0, 10);
+      last7.push({
+        date: key,
+        label: d.toLocaleDateString(undefined, { weekday: 'short' }),
+        count: scans.filter((s) => String(s.at || '').startsWith(key)).length,
+      });
+    }
+
+    const createdAt = profile.created_at || null;
+    const createdMs = createdAt ? Date.parse(createdAt) : NaN;
+    const daysLive = Number.isFinite(createdMs)
+      ? Math.max(1, Math.ceil((now.getTime() - createdMs) / dayMs))
+      : 1;
+    const total = Number(profile.scan_count) || scans.length || 0;
+    const avgPerDay = Math.round((total / daysLive) * 10) / 10;
+
+    let activity = 'Quiet';
+    if (todayCount >= 5 || weekCount >= 20) activity = 'Hot';
+    else if (todayCount >= 1 || weekCount >= 5) activity = 'Active';
+    else if (total > 0) activity = 'Steady';
+
+    const lastAt = profile.last_scanned_at || scans[0]?.at || null;
+    let hoursSinceLast = null;
+    if (lastAt) {
+      const diff = now.getTime() - Date.parse(lastAt);
+      if (Number.isFinite(diff)) {
+        hoursSinceLast = Math.max(0, Math.round(diff / (60 * 60 * 1000)));
+      }
+    }
+
+    return {
+      profileId,
+      total,
+      today: todayCount,
+      week: weekCount,
+      avgPerDay,
+      daysLive,
+      activity,
+      active: profile.active !== false,
+      lastScannedAt: lastAt,
+      hoursSinceLast,
+      createdAt,
+      last7,
+      recent: scans.slice(0, 8).map((s) => ({
+        id: s.id,
+        at: s.at,
+        device: /mobile|android|iphone|ipad/i.test(s.userAgent || '')
+          ? 'Mobile'
+          : s.userAgent
+            ? 'Desktop'
+            : 'Unknown',
+      })),
     };
   },
 

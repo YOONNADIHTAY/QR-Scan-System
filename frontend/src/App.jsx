@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Routes, Route, NavLink, Navigate, useParams, useLocation } from 'react-router-dom';
+import { Routes, Route, NavLink, Navigate, useLocation, useParams } from 'react-router-dom';
 import GeneratePage from './pages/GeneratePage';
 import SavedPage from './pages/SavedPage';
 import ScanPage from './pages/ScanPage';
 import LoginPage from './pages/LoginPage';
-import StaffDesignPage from './pages/StaffDesignPage';
-import StaffProfilePage from './pages/StaffProfilePage';
+import RecordOverviewPage from './pages/RecordOverviewPage';
 import {
   BulkPage,
   StatsPage,
@@ -20,12 +19,13 @@ import {
 } from './pages/SidebarPages';
 import {
   getAuthProfile,
+  getStaffProfileId,
   isAdmin,
   isAuthenticated,
-  isStaff,
   logout,
 } from './auth';
 import { useI18n } from './I18nContext';
+import InstallAppBanner from './components/InstallAppBanner';
 import {
   IconGenerate,
   IconQrCodes,
@@ -44,16 +44,30 @@ import {
 
 const SIDEBAR_KEY = 'qr_sidebar_collapsed';
 
-function ProfileRedirect() {
-  const { id } = useParams();
-  return <Navigate to={`/edit/${id}`} replace />;
-}
-
 function RequireAuth({ children }) {
   if (!isAuthenticated()) {
     return <Navigate to="/login" replace />;
   }
   return children;
+}
+
+function ProfileToRecordRedirect() {
+  const { id } = useParams();
+  return <Navigate to={`/record/${id}`} replace />;
+}
+
+function StaffHome() {
+  const id = getStaffProfileId();
+  if (!id) {
+    return (
+      <div className="page-panel">
+        <div className="panel-card sidebar-page-card empty-panel">
+          <p>Your QR is not linked yet. Ask an admin to create your customer QR.</p>
+        </div>
+      </div>
+    );
+  }
+  return <RecordOverviewPage forcedId={id} />;
 }
 
 function SidebarLink({ to, end, icon, children, match, title }) {
@@ -79,14 +93,13 @@ function AppShell() {
   const { t } = useI18n();
   const location = useLocation();
   const admin = isAdmin();
-  const staff = isStaff();
   const profile = getAuthProfile();
   const isGenerate =
-    location.pathname === '/' ||
-    location.pathname.startsWith('/edit') ||
-    location.pathname === '/my-qr';
+    location.pathname === '/' || location.pathname.startsWith('/edit');
   const userLabel = profile?.email || 'User';
-  const [collapsed, setCollapsed] = useState(() => localStorage.getItem(SIDEBAR_KEY) === '1');
+  const [collapsed, setCollapsed] = useState(
+    () => localStorage.getItem(SIDEBAR_KEY) === '1'
+  );
 
   useEffect(() => {
     localStorage.setItem(SIDEBAR_KEY, collapsed ? '1' : '0');
@@ -149,7 +162,7 @@ function AppShell() {
                 {t('navSettings')}
               </SidebarLink>
               <SidebarLink to="/users" icon={<IconUser />}>
-                Staff register
+                Customer register
               </SidebarLink>
               <div className="nav-divider" role="separator" />
               <SidebarLink to="/security" icon={<IconShield />}>
@@ -165,10 +178,7 @@ function AppShell() {
           ) : (
             <>
               <SidebarLink to="/my-qr" icon={<IconQrCodes />}>
-                My QR design
-              </SidebarLink>
-              <SidebarLink to="/my-profile" icon={<IconUser />}>
-                My profile
+                My QR
               </SidebarLink>
               <SidebarLink to="/settings" icon={<IconSettings />}>
                 {t('navSettings')}
@@ -191,8 +201,8 @@ function AppShell() {
             </div>
           ) : (
             <div className="sidebar-tip">
-              <strong>Staff workspace</strong>
-              <span>Customize your QR colors, photo, and details.</span>
+              <strong>Customer workspace</strong>
+              <span>View your profile, scans, and edit your QR record.</span>
             </div>
           )}
           <div className="sidebar-user">
@@ -202,7 +212,7 @@ function AppShell() {
               alt=""
             />
             <div>
-              <strong>{admin ? t('administrator') : profile?.name || 'Staff'}</strong>
+              <strong>{admin ? t('administrator') : profile?.name || 'Customer'}</strong>
               <small title={userLabel}>{userLabel}</small>
             </div>
           </div>
@@ -218,6 +228,7 @@ function AppShell() {
             <>
               <Route path="/" element={<GeneratePage />} />
               <Route path="/edit/:id" element={<GeneratePage />} />
+              <Route path="/record/:id" element={<RecordOverviewPage />} />
               <Route path="/saved" element={<SavedPage />} />
               <Route path="/bulk" element={<BulkPage />} />
               <Route path="/stats" element={<StatsPage />} />
@@ -230,16 +241,19 @@ function AppShell() {
               <Route path="/contact" element={<ContactPage />} />
               <Route path="/help" element={<HelpPage />} />
               <Route path="/new" element={<Navigate to="/" replace />} />
-              <Route path="/profile/:id" element={<ProfileRedirect />} />
+              <Route path="/profile/:id" element={<ProfileToRecordRedirect />} />
               <Route path="/my-qr" element={<Navigate to="/" replace />} />
+              <Route path="/my-profile" element={<Navigate to="/" replace />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </>
           ) : (
             <>
-              <Route path="/my-qr" element={<StaffDesignPage />} />
-              <Route path="/my-profile" element={<StaffProfilePage />} />
+              <Route path="/my-qr" element={<StaffHome />} />
+              <Route path="/edit/:id" element={<GeneratePage staffMode />} />
+              <Route path="/record/:id" element={<RecordOverviewPage />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/help" element={<HelpPage />} />
+              <Route path="/my-profile" element={<Navigate to="/my-qr" replace />} />
               <Route path="*" element={<Navigate to="/my-qr" replace />} />
             </>
           )}
@@ -251,17 +265,20 @@ function AppShell() {
 
 export default function App() {
   return (
-    <Routes>
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/scan/:id" element={<ScanPage />} />
-      <Route
-        path="*"
-        element={
-          <RequireAuth>
-            <AppShell />
-          </RequireAuth>
-        }
-      />
-    </Routes>
+    <>
+      <InstallAppBanner />
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/scan/:id" element={<ScanPage />} />
+        <Route
+          path="*"
+          element={
+            <RequireAuth>
+              <AppShell />
+            </RequireAuth>
+          }
+        />
+      </Routes>
+    </>
   );
 }

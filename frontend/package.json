@@ -5,10 +5,18 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
+    "build": "node scripts/make-icons.mjs && vite build",
+    "preview": "vite preview",
+    "icons": "node scripts/make-icons.mjs",
+    "cap:sync": "npm run build && node scripts/prepare-cap.mjs && npx cap sync android",
+    "cap:open": "npx cap open android",
+    "mobile:android": "npm run cap:sync && npx cap open android"
   },
   "dependencies": {
+    "@capacitor/android": "^8.6.2",
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/core": "^8.6.2",
+    "@capacitor/status-bar": "^8.0.4",
     "leaflet": "^1.9.4",
     "qrcode.react": "^4.0.1",
     "react": "^18.3.1",
@@ -17,7 +25,9 @@
     "react-router-dom": "^6.26.2"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.6.2",
     "@vitejs/plugin-react": "^4.3.1",
-    "vite": "^5.4.8"
+    "vite": "^5.4.8",
+    "vite-plugin-pwa": "^2.0.0"
   }
 }

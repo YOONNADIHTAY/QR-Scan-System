@@ -108,14 +108,46 @@ app.get('/api/geocode', async (req, res) => {
   }
 });
 
+async function loadPublicScanProfile(id, userAgent = '') {
+  const row = store.getProfile(id);
+  if (!row) return { status: 404, error: 'Profile not found' };
+  if (row.active === false) {
+    return { status: 403, error: 'This QR is deactivated' };
+  }
+  store.recordScan(row.id, { userAgent });
+  const profile = mapProfile(store.getProfile(row.id) || row);
+  profile.branches = await enrichScanBranches(profile.branches);
+  return { status: 200, profile };
+}
+
+/** Public JSON for camera / SPA scan page (no login required) */
+app.get('/api/scan/:id', async (req, res) => {
+  try {
+    const result = await loadPublicScanProfile(
+      req.params.id,
+      req.headers['user-agent'] || ''
+    );
+    if (result.status !== 200) {
+      return res.status(result.status).json({ error: result.error });
+    }
+    res.json(result.profile);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to load scan profile' });
+  }
+});
+
 const distPath = path.join(__dirname, '..', 'frontend', 'dist');
 const publicAssets = path.join(__dirname, '..', 'frontend', 'public');
 
 // Lightweight HTML scan page (no large JS bundle) — reliable over free tunnels
 app.get('/scan/:id', async (req, res) => {
   try {
-    const row = store.getProfile(req.params.id);
-    if (!row) {
+    const result = await loadPublicScanProfile(
+      req.params.id,
+      req.headers['user-agent'] || ''
+    );
+    if (result.status === 404) {
       res
         .status(404)
         .type('html')
@@ -124,19 +156,16 @@ app.get('/scan/:id', async (req, res) => {
         );
       return;
     }
-    if (row.active === false) {
+    if (result.status === 403) {
       res
         .status(403)
         .type('html')
         .send(
-          '<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><title>Inactive</title><p style="font-family:sans-serif;padding:2rem">This staff QR is deactivated.</p>'
+          '<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><title>Inactive</title><p style="font-family:sans-serif;padding:2rem">This QR is deactivated.</p>'
         );
       return;
     }
-    store.recordScan(row.id, { userAgent: req.headers['user-agent'] || '' });
-    const profile = mapProfile(store.getProfile(row.id) || row);
-    profile.branches = await enrichScanBranches(profile.branches);
-    res.type('html').send(renderScanHtml(profile));
+    res.type('html').send(renderScanHtml(result.profile));
   } catch (err) {
     console.error(err);
     res.status(500).type('html').send('<p>Failed to load scan page.</p>');

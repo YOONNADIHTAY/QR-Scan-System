@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { apiUrl } from '../apiBase';
 
 function loadGoogleScript() {
   if (window.google?.accounts?.oauth2) return Promise.resolve();
@@ -60,7 +61,7 @@ export default function GoogleSignInButton({ onCredential, disabled }) {
 
   useEffect(() => {
     let cancelled = false;
-    fetch('/api/config')
+    fetch(apiUrl('/api/config'))
       .then((r) => (r.ok ? r.json() : null))
       .then((cfg) => {
         if (cancelled || !cfg?.googleClientId) return;

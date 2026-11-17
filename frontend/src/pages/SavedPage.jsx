@@ -12,7 +12,7 @@ import {
   IconSearch,
   IconTrash,
 } from '../components/Icons';
-import { DEPARTMENT_OPTIONS } from '../constants/departments';
+import { SHOP_NOS, parseShopNo, formatShopLabel } from '../constants/shops';
 
 function formatDate(value) {
   if (!value) return '—';
@@ -39,11 +39,6 @@ function typeClass(type) {
   return 'tag tag-profile';
 }
 
-/** Department field (falls back to role/title for older records) */
-function profileDepartment(p) {
-  return String(p.department || p.description || '').trim();
-}
-
 /** Shop / branch names on the QR */
 function profileBranchLabels(p) {
   const fromBranches = (p.branches || [])
@@ -59,6 +54,10 @@ function profileBranchText(p) {
   return labels.length ? labels.join(', ') : '—';
 }
 
+function profileShopNo(p) {
+  return parseShopNo(p.shopName || '');
+}
+
 export default function SavedPage() {
   const { t } = useI18n();
   const { publicBase } = usePublicBase();
@@ -67,7 +66,7 @@ export default function SavedPage() {
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
-  const [departmentFilter, setDepartmentFilter] = useState('all');
+  const [shopFilter, setShopFilter] = useState('all');
   const [sortBy, setSortBy] = useState('newest');
   const [menuId, setMenuId] = useState(null);
 
@@ -95,15 +94,6 @@ export default function SavedPage() {
     return () => window.removeEventListener('click', close);
   }, []);
 
-  const departmentOptions = useMemo(() => {
-    const set = new Set(DEPARTMENT_OPTIONS);
-    profiles.forEach((p) => {
-      const d = profileDepartment(p);
-      if (d) set.add(d);
-    });
-    return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }, [profiles]);
-
   const filtered = useMemo(() => {
     let list = [...profiles];
     const q = search.trim().toLowerCase();
@@ -112,18 +102,18 @@ export default function SavedPage() {
       list = list.filter((p) => profileType(p) === typeFilter);
     }
 
-    if (departmentFilter !== 'all') {
-      list = list.filter((p) => profileDepartment(p) === departmentFilter);
+    if (shopFilter !== 'all') {
+      list = list.filter((p) => profileShopNo(p) === shopFilter);
     }
 
     if (q) {
       list = list.filter((p) => {
         const hay = [
           p.name,
-          p.description,
           p.shopName,
           p.personalPhone,
           p.personalEmail,
+          formatShopLabel(profileShopNo(p)),
           ...(p.branches || []).map((b) => `${b.name} ${b.address} ${b.phone}`),
         ]
           .join(' ')
@@ -134,10 +124,10 @@ export default function SavedPage() {
 
     list.sort((a, b) => {
       if (sortBy === 'name') return (a.name || '').localeCompare(b.name || '');
-      if (sortBy === 'department') {
-        return profileDepartment(a).localeCompare(profileDepartment(b));
-      }
       if (sortBy === 'branch') {
+        const sa = Number(profileShopNo(a) || 999);
+        const sb = Number(profileShopNo(b) || 999);
+        if (sa !== sb) return sa - sb;
         return profileBranchText(a).localeCompare(profileBranchText(b));
       }
       const da = new Date(a.updatedAt || a.createdAt || 0).getTime();
@@ -146,7 +136,7 @@ export default function SavedPage() {
     });
 
     return list;
-  }, [profiles, search, typeFilter, departmentFilter, sortBy]);
+  }, [profiles, search, typeFilter, shopFilter, sortBy]);
 
   async function handleDelete(id, name) {
     if (!window.confirm(`Delete "${name}"?`)) return;
@@ -174,7 +164,7 @@ export default function SavedPage() {
       <div className="welcome-banner erp-hero">
         <h2>{t('welcomeAdmin')}</h2>
         <p>
-          Register staff, generate QR, edit/delete info, manage designs, and track scans.
+          Register customers, generate QR, edit/delete info, manage designs, and track scans.
         </p>
       </div>
 
@@ -187,11 +177,11 @@ export default function SavedPage() {
         </div>
         <div className="toolbar-actions">
           <Link to="/users" className="btn btn-secondary">
-            Staff list
+            Customer list
           </Link>
           <Link to="/" className="btn btn-primary">
             <IconPlus />
-            Generate staff QR
+            Generate customer QR
           </Link>
         </div>
       </header>
@@ -222,20 +212,15 @@ export default function SavedPage() {
             <option value="Product">Product</option>
           </select>
 
-          <select defaultValue="all" aria-label="Branches">
-            <option value="all">Branches: All</option>
-          </select>
-
           <select
-            className="filter-department"
-            value={departmentFilter}
-            onChange={(e) => setDepartmentFilter(e.target.value)}
-            aria-label="Departments"
+            value={shopFilter}
+            onChange={(e) => setShopFilter(e.target.value)}
+            aria-label="Shop / Branches"
           >
-            <option value="all">Departments: All</option>
-            {departmentOptions.map((name) => (
-              <option key={name} value={name}>
-                {name}
+            <option value="all">Branches: All</option>
+            {SHOP_NOS.map((n) => (
+              <option key={n} value={n}>
+                Shop {n}
               </option>
             ))}
           </select>
@@ -243,8 +228,7 @@ export default function SavedPage() {
           <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} aria-label="Sort by">
             <option value="newest">Newest</option>
             <option value="name">Name A–Z</option>
-            <option value="department">Department</option>
-            <option value="branch">Branch</option>
+            <option value="branch">Shop / Branch</option>
           </select>
         </div>
 
@@ -252,7 +236,7 @@ export default function SavedPage() {
           <div className="loading">Loading saved codes…</div>
         ) : !filtered.length ? (
           <div className="empty-panel">
-            <p>No staff records match your filters.</p>
+            <p>No customer records match your filters.</p>
             <Link to="/" className="btn btn-primary">
               <IconPlus />
               New Record
@@ -265,8 +249,7 @@ export default function SavedPage() {
                 <tr>
                   <th>QR</th>
                   <th>Name</th>
-                  <th>Branches</th>
-                  <th>Departments</th>
+                  <th>Shop / Branch</th>
                   <th>Type</th>
                   <th>Scans</th>
                   <th>Status</th>
@@ -302,13 +285,13 @@ export default function SavedPage() {
                           {p.personalEmail ? <small>{p.personalEmail}</small> : null}
                         </div>
                       </td>
-                      <td>{profileBranchText(p)}</td>
                       <td>
-                        {profileDepartment(p) ? (
-                          <span className="tag tag-branches">{profileDepartment(p)}</span>
-                        ) : (
-                          '—'
-                        )}
+                        <div className="table-name">
+                          {profileShopNo(p) ? (
+                            <strong>{formatShopLabel(profileShopNo(p))}</strong>
+                          ) : null}
+                          <small>{profileBranchText(p)}</small>
+                        </div>
                       </td>
                       <td>
                         <span className={typeClass(type)}>{type}</span>
@@ -322,7 +305,7 @@ export default function SavedPage() {
                       <td>{formatDate(p.createdAt)}</td>
                       <td>
                         <div className="qr-actions table-actions">
-                          <Link to={`/edit/${p.id}`} className="btn btn-detail">
+                          <Link to={`/record/${p.id}`} className="btn btn-detail">
                             Design
                           </Link>
                           <div className="more-wrap">

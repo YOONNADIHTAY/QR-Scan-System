@@ -21,7 +21,6 @@ import {
 import usePublicBase from '../hooks/usePublicBase';
 import { useI18n } from '../I18nContext';
 import { IconPlus } from '../components/Icons';
-import { DEPARTMENT_OPTIONS } from '../constants/departments';
 
 function PageFrame({ title, desc, actions, children }) {
   return (
@@ -42,7 +41,6 @@ export function BulkPage() {
   const { t } = useI18n();
   const navigate = useNavigate();
   const [text, setText] = useState('');
-  const [department, setDepartment] = useState('');
   const [shopName, setShopName] = useState('29 Jewellery');
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -80,7 +78,7 @@ export function BulkPage() {
   async function onGenerate(e) {
     e.preventDefault();
     if (!names.length) {
-      setError('Enter at least one staff name.');
+      setError('Enter at least one customer name.');
       return;
     }
     setBusy(true);
@@ -92,8 +90,8 @@ export function BulkPage() {
       for (const name of names) {
         const fd = new FormData();
         fd.append('name', name);
-        fd.append('description', 'Staff');
-        if (department) fd.append('department', department);
+        fd.append('description', '');
+        fd.append('department', '');
         fd.append('includeShop', 'true');
         fd.append('shopName', shopName.trim() || '29 Jewellery');
         await createProfile(fd);
@@ -166,21 +164,6 @@ export function BulkPage() {
               <h3>{t('bulkStep2')}</h3>
             </header>
             <div className="bulk-options">
-              <label className="field">
-                <span>{t('bulkDepartment')}</span>
-                <select
-                  className="field-select"
-                  value={department}
-                  onChange={(e) => setDepartment(e.target.value)}
-                >
-                  <option value="">Select department</option>
-                  {DEPARTMENT_OPTIONS.map((opt) => (
-                    <option key={opt} value={opt}>
-                      {opt}
-                    </option>
-                  ))}
-                </select>
-              </label>
               <label className="field">
                 <span>{t('bulkShop')}</span>
                 <input
@@ -257,7 +240,7 @@ export function StatsPage() {
   return (
     <PageFrame
       title={t('statsTitle')}
-      desc="QR scan statistics and staff registry overview."
+      desc="QR scan statistics and customer registry overview."
     >
       {error ? <div className="error-banner">{error}</div> : null}
       {loading || !stats ? (
@@ -281,17 +264,17 @@ export function StatsPage() {
               <strong>
                 {stats.activeStaff}/{stats.totalStaff}
               </strong>
-              <span>Active staff accounts</span>
+              <span>Active customer accounts</span>
             </article>
           </div>
 
           <section className="panel-card sidebar-page-card" style={{ marginTop: '1rem' }}>
-            <h3 style={{ margin: '0 0 0.75rem' }}>Scans by staff QR</h3>
+            <h3 style={{ margin: '0 0 0.75rem' }}>Scans by customer QR</h3>
             <div className="data-table-wrap">
               <table className="data-table">
                 <thead>
                   <tr>
-                    <th>Staff / QR</th>
+                    <th>Customer / QR</th>
                     <th>Scans</th>
                     <th>Last scan</th>
                     <th>Status</th>
@@ -329,8 +312,8 @@ export function StatsPage() {
 const TEMPLATES = [
   {
     id: 'staff',
-    title: 'Staff profile',
-    text: 'Name, role, phone, and shop map — classic staff QR card.',
+    title: 'Customer profile',
+    text: 'Name, role, phone, and shop map — classic customer QR card.',
   },
   {
     id: 'product',
@@ -427,7 +410,7 @@ export function PlansPage() {
         <h3>{t('planName')}</h3>
         <p>{t('planText')}</p>
         <ul className="plan-list">
-          <li>Staff QR create / edit / delete</li>
+          <li>Customer QR create / edit / delete</li>
           <li>Bulk generation</li>
           <li>Cloudflare public scan links</li>
           <li>Local admin sign-in</li>
@@ -577,10 +560,6 @@ export function SettingsPage() {
                     <strong>{t('toolMyQr')}</strong>
                     <span>{t('toolMyQrHint')}</span>
                   </Link>
-                  <Link className="settings-tool-card" to="/my-profile">
-                    <strong>{t('toolMyProfile')}</strong>
-                    <span>{t('toolMyProfileHint')}</span>
-                  </Link>
                   <Link className="settings-tool-card" to="/help">
                     <strong>{t('toolHelp')}</strong>
                     <span>{t('designUrlNote')}</span>
@@ -714,7 +693,7 @@ export function UsersPage() {
   }
 
   async function onDelete(id) {
-    if (!window.confirm('Delete this staff account?')) return;
+    if (!window.confirm('Delete this customer account?')) return;
     try {
       await deleteUser(id);
       await load();
@@ -725,19 +704,19 @@ export function UsersPage() {
 
   return (
     <PageFrame
-      title="Staff register"
-      desc="Register staff accounts, link QR profiles, activate or deactivate access."
+      title="Customer register"
+      desc="Register customer accounts, link QR profiles, activate or deactivate access."
       actions={
         <button type="button" className="btn btn-primary" onClick={() => navigate('/')}>
           <IconPlus />
-          New staff QR
+          New customer QR
         </button>
       }
     >
       {error ? <div className="error-banner">{error}</div> : null}
 
       <section className="panel-card sidebar-page-card" style={{ marginBottom: '1rem' }}>
-        <h3 style={{ margin: '0 0 0.75rem' }}>Register new staff</h3>
+        <h3 style={{ margin: '0 0 0.75rem' }}>Register new customer</h3>
         <form className="stack-form" onSubmit={onCreate}>
           <div className="form-grid">
             <label className="field">
@@ -782,13 +761,13 @@ export function UsersPage() {
             </label>
           </div>
           <button className="btn btn-primary" type="submit" disabled={busy}>
-            {busy ? 'Saving…' : 'Register staff'}
+            {busy ? 'Saving…' : 'Register customer'}
           </button>
         </form>
       </section>
 
       <section className="panel-card sidebar-page-card">
-        <h3 style={{ margin: '0 0 0.75rem' }}>Staff list</h3>
+        <h3 style={{ margin: '0 0 0.75rem' }}>Customer list</h3>
         {loading ? (
           <div className="loading">Loading users…</div>
         ) : (
@@ -810,7 +789,9 @@ export function UsersPage() {
                     <td>{u.name}</td>
                     <td>{u.email}</td>
                     <td>
-                      <span className="tag tag-profile">{u.role}</span>
+                      <span className="tag tag-profile">
+                        {u.role === 'staff' ? 'customer' : u.role}
+                      </span>
                     </td>
                     <td>
                       {u.role === 'admin' ? (
@@ -947,7 +928,7 @@ export function HelpPage() {
       <section className="panel-card sidebar-page-card help-list">
         <article>
           <h3>{t('navNewQr')}</h3>
-          <p>Open New QR, fill staff details, save, then download or print the code.</p>
+          <p>Open New QR, fill customer details, save, then download or print the code.</p>
         </article>
         <article>
           <h3>{t('navDomains')}</h3>
@@ -955,11 +936,11 @@ export function HelpPage() {
         </article>
         <article>
           <h3>{t('navBulk')}</h3>
-          <p>Paste many staff names in Bulk QR generation to create profiles quickly.</p>
+          <p>Paste many customer names in Bulk QR generation to create profiles quickly.</p>
         </article>
         <article>
           <h3>{t('signIn')}</h3>
-          <p>Staff admin: admin@29jewellery.com / 123456</p>
+          <p>Admin: admin@29jewellery.com / 123456</p>
         </article>
       </section>
     </PageFrame>
