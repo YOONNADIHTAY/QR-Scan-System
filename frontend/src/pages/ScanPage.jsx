@@ -225,22 +225,14 @@ export default function ScanPage() {
             </div>
           )}
 
-          {(hasShopBlock || hasPhotos) && (
+          {hasPhotos ? (
             <div className="scan-v2-grid scan-v2-grid-simple">
-              {hasShopBlock ? (
-                <a className="scan-v2-tile" href="#shop">
-                  <IconMap />
-                  <span>Shop</span>
-                </a>
-              ) : null}
-              {hasPhotos ? (
-                <a className="scan-v2-tile" href="#photos">
-                  <IconUser />
-                  <span>Products</span>
-                </a>
-              ) : null}
+              <a className="scan-v2-tile" href="#photos">
+                <IconUser />
+                <span>Products</span>
+              </a>
             </div>
-          )}
+          ) : null}
         </article>
 
         {hasShopBlock && (

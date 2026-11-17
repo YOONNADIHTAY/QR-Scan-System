@@ -248,16 +248,9 @@ function renderScanHtml(profile) {
     )
     .join('');
 
-  const gridHtml = [
-    hasShop
-      ? `<a class="tile" href="#shop"><span class="tile-ico">📍</span><span>Shop</span></a>`
-      : '',
-    photos.length
-      ? `<a class="tile" href="#photos"><span class="tile-ico">◆</span><span>Products</span></a>`
-      : '',
-  ]
-    .filter(Boolean)
-    .join('');
+  const gridHtml = photos.length
+    ? `<a class="tile" href="#photos"><span class="tile-ico">◆</span><span>Products</span></a>`
+    : '';
 
   const leafletAssets = '';
 
