@@ -252,12 +252,6 @@ function renderScanHtml(profile) {
     hasShop
       ? `<a class="tile" href="#shop"><span class="tile-ico">📍</span><span>Shop</span></a>`
       : '',
-    primaryPhone
-      ? `<a class="tile" href="tel:${escapeHtml(primaryPhone)}"><span class="tile-ico">${ICONS.phone}</span><span>Call</span></a>`
-      : '',
-    profile.personalEmail
-      ? `<a class="tile" href="mailto:${escapeHtml(profile.personalEmail)}"><span class="tile-ico">${ICONS.mail}</span><span>Email</span></a>`
-      : '',
     photos.length
       ? `<a class="tile" href="#photos"><span class="tile-ico">◆</span><span>Products</span></a>`
       : '',
@@ -324,7 +318,7 @@ function renderScanHtml(profile) {
         linear-gradient(165deg, #0a2744 0%, #124a7c 42%, #1d6aa8 72%, #e7f2fb 72%);
     }
     .shell { max-width: 440px; margin: 0 auto; padding: 1rem 1rem 2.2rem; }
-    .brand { display:flex; align-items:center; gap:.65rem; color:#fff; margin-bottom:1.1rem; }
+    .brand { display:flex; align-items:center; gap:.65rem; color:#fff; margin-bottom:3.4rem; }
     .brand img { width:42px; height:42px; object-fit:contain; border-radius:10px; background:#fff; padding:.2rem; }
     .brand strong { display:block; font-size:.95rem; }
     .brand small { opacity:.8; font-size:.72rem; }
@@ -361,7 +355,7 @@ function renderScanHtml(profile) {
     .social a.fb { color:#1877f2; }
     .social a.tt { color:#111; }
     .social a.yt { color:#e11d48; }
-    .grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:.55rem; margin-top:1.1rem; }
+    .grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.55rem; margin-top:1.1rem; max-width:260px; margin-left:auto; margin-right:auto; }
     .tile {
       display:grid; gap:.3rem; justify-items:center; padding:.7rem .35rem; border-radius:14px;
       border:1px solid #d7e6f5; background:linear-gradient(180deg,#f8fbfe,#eef6fc);

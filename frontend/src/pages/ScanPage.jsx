@@ -225,40 +225,20 @@ export default function ScanPage() {
             </div>
           )}
 
-          <div className="scan-v2-grid">
-            {hasShopBlock ? (
-              <a className="scan-v2-tile" href="#shop">
-                <IconMap />
-                <span>Shop</span>
-              </a>
-            ) : null}
-            {primaryPhone ? (
-              <a className="scan-v2-tile" href={`tel:${primaryPhone}`}>
-                <IconPhone />
-                <span>Call</span>
-              </a>
-            ) : null}
-            {profile.personalEmail ? (
-              <a className="scan-v2-tile" href={`mailto:${profile.personalEmail}`}>
-                <IconMail />
-                <span>Email</span>
-              </a>
-            ) : null}
-            {hasPhotos ? (
-              <a className="scan-v2-tile" href="#photos">
-                <IconUser />
-                <span>Products</span>
-              </a>
-            ) : null}
-          </div>
-
-          {personalPhones.length > 1 && (
-            <div className="scan-v2-phones">
-              {personalPhones.map((phone) => (
-                <a key={phone} href={`tel:${phone}`}>
-                  <IconPhone /> {phone}
+          {(hasShopBlock || hasPhotos) && (
+            <div className="scan-v2-grid scan-v2-grid-simple">
+              {hasShopBlock ? (
+                <a className="scan-v2-tile" href="#shop">
+                  <IconMap />
+                  <span>Shop</span>
                 </a>
-              ))}
+              ) : null}
+              {hasPhotos ? (
+                <a className="scan-v2-tile" href="#photos">
+                  <IconUser />
+                  <span>Products</span>
+                </a>
+              ) : null}
             </div>
           )}
         </article>

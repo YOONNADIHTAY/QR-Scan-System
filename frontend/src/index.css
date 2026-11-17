@@ -4265,7 +4265,7 @@ body {
   align-items: center;
   gap: 0.65rem;
   color: #fff;
-  margin-bottom: 1.1rem;
+  margin-bottom: 3.4rem;
 }
 
 .scan-v2-brand img {
@@ -4429,6 +4429,13 @@ body {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0.55rem;
   margin-top: 1.1rem;
+}
+
+.scan-v2-grid-simple {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  max-width: 260px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .scan-v2-tile {
