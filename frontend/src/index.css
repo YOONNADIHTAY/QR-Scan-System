@@ -4191,55 +4191,55 @@ body {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(circle at 12% 18%, rgba(61, 143, 209, 0.45), transparent 42%),
-    radial-gradient(circle at 88% 8%, rgba(20, 90, 150, 0.55), transparent 40%),
-    linear-gradient(165deg, #0a2744 0%, #124a7c 42%, #1d6aa8 72%, #e7f2fb 72%);
+    radial-gradient(circle at 100% 0%, rgba(20, 90, 150, 0.1), transparent 38%),
+    radial-gradient(circle at 0% 18%, rgba(61, 143, 209, 0.08), transparent 36%),
+    linear-gradient(180deg, #ffffff 0%, #f7fbff 55%, #eef6fc 100%);
   z-index: 0;
 }
 
 .scan-v2-bg .blob {
   position: absolute;
   border-radius: 40% 60% 55% 45%;
-  opacity: 0.22;
+  opacity: 0.14;
   filter: blur(2px);
 }
 
 .scan-v2-bg .blob-a {
-  width: 220px;
-  height: 220px;
-  top: 8%;
-  right: -40px;
-  background: #7ec3f0;
+  width: 200px;
+  height: 200px;
+  top: 4%;
+  right: -50px;
+  background: #9ad0f5;
   animation: scanFloat 9s ease-in-out infinite;
 }
 
 .scan-v2-bg .blob-b {
-  width: 160px;
-  height: 160px;
-  top: 28%;
-  left: -50px;
-  background: #2f7ab8;
+  width: 140px;
+  height: 140px;
+  top: 22%;
+  left: -45px;
+  background: #c5e4f8;
   animation: scanFloat 11s ease-in-out infinite reverse;
 }
 
 .scan-v2-bg .blob-c {
-  width: 120px;
-  height: 120px;
-  top: 52%;
-  right: 12%;
-  background: #9ad0f5;
-  opacity: 0.18;
+  width: 110px;
+  height: 110px;
+  top: 58%;
+  right: 10%;
+  background: #d7ebf8;
+  opacity: 0.2;
 }
 
 .scan-v2-bg .grid-lines {
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+    linear-gradient(rgba(20, 90, 150, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(20, 90, 150, 0.05) 1px, transparent 1px);
   background-size: 28px 28px;
-  mask-image: linear-gradient(#000 0%, transparent 70%);
-  opacity: 0.35;
+  mask-image: linear-gradient(#000 0%, transparent 78%);
+  opacity: 0.55;
 }
 
 @keyframes scanFloat {
@@ -4264,7 +4264,7 @@ body {
   display: flex;
   align-items: center;
   gap: 0.65rem;
-  color: #fff;
+  color: #0a2744;
   margin-bottom: 3.4rem;
 }
 
@@ -4283,7 +4283,7 @@ body {
 }
 
 .scan-v2-brand small {
-  opacity: 0.8;
+  color: #145a96;
   font-size: 0.72rem;
 }
 
@@ -4292,7 +4292,8 @@ body {
   background: var(--scan-card);
   border-radius: 22px;
   padding: 3.4rem 1.15rem 1.25rem;
-  box-shadow: 0 18px 40px rgba(10, 39, 68, 0.22);
+  box-shadow: 0 14px 32px rgba(10, 39, 68, 0.1);
+  border: 1px solid #d7e6f5;
   text-align: center;
   animation: fadeUp 0.4s ease both;
 }
@@ -4550,11 +4551,11 @@ body {
 .scan-v2-foot {
   text-align: center;
   margin-top: 1.1rem;
-  color: #0a2744;
+  color: #145a96;
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.04em;
-  opacity: 0.75;
+  opacity: 0.85;
 }
 
 @media (max-width: 380px) {

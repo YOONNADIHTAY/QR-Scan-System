@@ -313,18 +313,19 @@ function renderScanHtml(profile) {
       line-height: 1.45;
       min-height: 100vh;
       background:
-        radial-gradient(circle at 12% 18%, rgba(61,143,209,.45), transparent 42%),
-        radial-gradient(circle at 88% 8%, rgba(20,90,150,.55), transparent 40%),
-        linear-gradient(165deg, #0a2744 0%, #124a7c 42%, #1d6aa8 72%, #e7f2fb 72%);
+        radial-gradient(circle at 100% 0%, rgba(20,90,150,.1), transparent 38%),
+        radial-gradient(circle at 0% 18%, rgba(61,143,209,.08), transparent 36%),
+        linear-gradient(180deg, #ffffff 0%, #f7fbff 55%, #eef6fc 100%);
     }
     .shell { max-width: 440px; margin: 0 auto; padding: 1rem 1rem 2.2rem; }
-    .brand { display:flex; align-items:center; gap:.65rem; color:#fff; margin-bottom:3.4rem; }
-    .brand img { width:42px; height:42px; object-fit:contain; border-radius:10px; background:#fff; padding:.2rem; }
+    .brand { display:flex; align-items:center; gap:.65rem; color:#0a2744; margin-bottom:3.4rem; }
+    .brand img { width:42px; height:42px; object-fit:contain; border-radius:10px; background:#fff; padding:.2rem; border:1px solid #d7e6f5; }
     .brand strong { display:block; font-size:.95rem; }
-    .brand small { opacity:.8; font-size:.72rem; }
+    .brand small { color:#145a96; font-size:.72rem; }
     .card {
       position:relative; background:#fff; border-radius:22px; padding:3.4rem 1.15rem 1.25rem;
-      box-shadow: 0 18px 40px rgba(10,39,68,.22); text-align:center;
+      box-shadow: 0 14px 32px rgba(10,39,68,.1); text-align:center;
+      border:1px solid #d7e6f5;
     }
     .avatar-wrap { position:absolute; left:50%; top:0; transform:translate(-50%,-48%); }
     .avatar {
@@ -394,7 +395,7 @@ function renderScanHtml(profile) {
     .btn.ghost { background:#fff; color:#1e293b; border:1px solid #cbd5e1; }
     .photos { display:grid; grid-template-columns:1fr 1fr; gap:.55rem; }
     .photos img { width:100%; aspect-ratio:1; object-fit:cover; border-radius:12px; border:1px solid #e2e8f0; }
-    .foot { text-align:center; margin-top:1.1rem; color:#0a2744; font-size:.72rem; font-weight:700; letter-spacing:.04em; opacity:.75; }
+    .foot { text-align:center; margin-top:1.1rem; color:#145a96; font-size:.72rem; font-weight:700; letter-spacing:.04em; opacity:.85; }
     @media (max-width:380px) { .grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
   </style>
 </head>
