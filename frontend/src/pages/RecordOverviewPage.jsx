@@ -236,7 +236,7 @@ export default function RecordOverviewPage({ forcedId = null }) {
                 size={168}
                 bgColor={profile.qrBgColor || '#ffffff'}
                 fgColor={profile.qrFgColor || '#111111'}
-                logoUrl="/29-jewellery-logo.png"
+                logoUrl={profile.avatarUrl || ''}
                 frame={profile.qrFrame || 'none'}
               />
               <div className="record-qr-actions">

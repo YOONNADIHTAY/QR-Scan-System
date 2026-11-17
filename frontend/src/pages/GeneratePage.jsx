@@ -205,9 +205,7 @@ export default function GeneratePage({ forcedId = null, staffMode = false }) {
   }
 
   const scanUrl = savedId ? `${publicBase}/scan/${savedId}` : '';
-  const avatarSrc = avatarPreview || (!removeAvatar ? avatarUrl : '');
-  /** QR center always uses brand logo (not profile photo) */
-  const qrLogoSrc = '/29-jewellery-logo.png';
+  const logoSrc = avatarPreview || (!removeAvatar ? avatarUrl : '');
 
   function downloadQr() {
     downloadBrandedQrPng('preview-qr', `${form.name || 'qr'}-qr.png`);
@@ -398,9 +396,9 @@ export default function GeneratePage({ forcedId = null, staffMode = false }) {
                   </span>
                 ) : null}
               </div>
-              {avatarSrc && (
+              {logoSrc && (
                 <div className="avatar-preview-row">
-                  <img className="avatar-preview" src={avatarSrc} alt="Profile" />
+                  <img className="avatar-preview" src={logoSrc} alt="Profile" />
                   <button type="button" className="btn btn-danger" onClick={clearAvatar}>
                     Remove photo
                   </button>
@@ -685,7 +683,7 @@ export default function GeneratePage({ forcedId = null, staffMode = false }) {
                 size={220}
                 fgColor={form.qrFgColor}
                 bgColor={form.qrBgColor}
-                logoUrl={qrLogoSrc}
+                logoUrl={logoSrc}
                 frame={form.qrFrame}
               />
             </div>
