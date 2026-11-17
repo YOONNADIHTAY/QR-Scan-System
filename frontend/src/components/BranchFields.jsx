@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import { IconPhone, IconTrash } from './Icons';
-import { SHOP_NOS, formatShopLabel } from '../constants/shops';
 import {
   geocodeAddress,
   toGoogleMapsQueryUrl,
@@ -125,27 +124,7 @@ export default function BranchFields({ branch, index, onChange, onRemove, canRem
       <div className="form-grid">
         <div className="field">
           <label>Branch area</label>
-          <div className="shop-name-row">
-            <input value={query} onChange={(e) => setArea(e.target.value)} placeholder="e.g. Tamwe" />
-            <label className="shop-no-wrap">
-              <span>Shop</span>
-              <select
-                value={branch.shopNo || ''}
-                onChange={(e) => onChange(index, { ...branch, shopNo: e.target.value })}
-                aria-label="Shop number"
-              >
-                <option value="">—</option>
-                {SHOP_NOS.map((n) => (
-                  <option key={n} value={n}>
-                    {n}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-          {branch.shopNo ? (
-            <p className="shop-name-preview">{formatShopLabel(branch.shopNo)}</p>
-          ) : null}
+          <input value={query} onChange={(e) => setArea(e.target.value)} placeholder="e.g. Tamwe" />
         </div>
 
         <div className="field">

@@ -1,6 +1,6 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { getProfile, getProfileScanStats } from '../api';
+import { getProfile, getProfileScanStats, updateProfileDesign } from '../api';
 import { assetUrl } from '../apiBase';
 import BrandedQr, { downloadBrandedQrPng } from '../components/BrandedQr';
 import { formatShopLabel, parseShopNo } from '../constants/shops';
@@ -53,6 +53,12 @@ export default function RecordOverviewPage({ forcedId = null }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const [photoNote, setPhotoNote] = useState('');
+  const photoInputRef = useRef(null);
+  const canEditPhoto =
+    Boolean(profileId) &&
+    (admin || (isStaff() && String(staffOwnId || '') === String(profileId || '')));
 
   useEffect(() => {
     if (!profileId) {
@@ -138,14 +144,35 @@ export default function RecordOverviewPage({ forcedId = null }) {
     }
   }
 
+  async function onExecutivePhotoChange(event) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file || !profile?.id) return;
+    setPhotoBusy(true);
+    setPhotoNote('');
+    setError('');
+    try {
+      const fd = new FormData();
+      fd.append('avatar', file);
+      const updated = await updateProfileDesign(profile.id, fd);
+      setProfile(updated);
+      setPhotoNote('Profile photo updated');
+      window.setTimeout(() => setPhotoNote(''), 2200);
+    } catch (err) {
+      setError(err.message || 'Failed to update photo');
+    } finally {
+      setPhotoBusy(false);
+    }
+  }
+
   return (
     <div className="page-panel staff-workspace">
       <div className="welcome-banner erp-hero">
         <h2>{admin ? 'Users record' : 'My QR'}</h2>
         <p>
           {admin
-            ? 'Profile overview and scan statistics. Use Edit Record to change details or QR design.'
-            : 'Your profile and QR scan statistics. Edit Record to update design and details.'}
+            ? 'Profile overview and scan statistics. Change the profile photo here, or Edit Record for full details.'
+            : 'Your profile and QR scan statistics. Change your profile photo anytime, or Edit Record for full details.'}
         </p>
       </div>
 
@@ -166,17 +193,39 @@ export default function RecordOverviewPage({ forcedId = null }) {
           <div className="record-profile-top">
             <div className="record-profile-meta">
               <div className="profile-identity">
-                {profile.avatarUrl ? (
-                  <img
-                    className="profile-identity-photo"
-                    src={assetUrl(profile.avatarUrl)}
-                    alt={profile.name || 'Profile'}
-                  />
-                ) : (
-                  <div className="profile-identity-fallback" aria-hidden="true">
-                    {(profile.name || 'C').slice(0, 1).toUpperCase()}
-                  </div>
-                )}
+                <div className="executive-profile-media">
+                  {profile.avatarUrl ? (
+                    <img
+                      className="profile-identity-photo"
+                      src={assetUrl(profile.avatarUrl)}
+                      alt={profile.name || 'Executive Profile'}
+                    />
+                  ) : (
+                    <div className="profile-identity-fallback" aria-hidden="true">
+                      {(profile.name || 'U').slice(0, 1).toUpperCase()}
+                    </div>
+                  )}
+                  {canEditPhoto ? (
+                    <div className="executive-profile-actions">
+                      <input
+                        ref={photoInputRef}
+                        className="file-input-hidden"
+                        type="file"
+                        accept="image/*"
+                        onChange={onExecutivePhotoChange}
+                      />
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        disabled={photoBusy}
+                        onClick={() => photoInputRef.current?.click()}
+                      >
+                        {photoBusy ? 'Uploading…' : profile.avatarUrl ? 'Change photo' : 'Add photo'}
+                      </button>
+                      {photoNote ? <span className="executive-profile-note">{photoNote}</span> : null}
+                    </div>
+                  ) : null}
+                </div>
                 <div className="profile-identity-copy">
                   <h4>{profile.name || 'Unnamed Users'}</h4>
                   <div className="profile-chip-row">
@@ -194,6 +243,24 @@ export default function RecordOverviewPage({ forcedId = null }) {
                   <span>Email</span>
                   {profile.personalEmail ? (
                     <a href={`mailto:${profile.personalEmail}`}>{profile.personalEmail}</a>
+                  ) : (
+                    <strong>—</strong>
+                  )}
+                </article>
+                <article className="profile-contact-card">
+                  <span>Viber</span>
+                  {profile.viberNumber ? (
+                    <strong>{profile.viberNumber}</strong>
+                  ) : (
+                    <strong>—</strong>
+                  )}
+                </article>
+                <article className="profile-contact-card">
+                  <span>WhatsApp</span>
+                  {profile.whatsappLink ? (
+                    <a href={profile.whatsappLink} target="_blank" rel="noreferrer">
+                      Open link
+                    </a>
                   ) : (
                     <strong>—</strong>
                   )}

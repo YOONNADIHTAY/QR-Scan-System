@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Routes, Route, NavLink, Navigate, useLocation, useParams } from 'react-router-dom';
 import GeneratePage from './pages/GeneratePage';
 import SavedPage from './pages/SavedPage';
@@ -10,7 +10,7 @@ import {
   StatsPage,
   TemplatesPage,
   DomainsPage,
-  PlansPage,
+  DashboardOverviewPage,
   SettingsPage,
   UsersPage,
   SecurityPage,
@@ -31,11 +31,10 @@ import {
   IconQrCodes,
   IconBulk,
   IconStats,
+  IconDashboard,
   IconTemplate,
   IconGlobe,
-  IconCard,
   IconSettings,
-  IconUser,
   IconShield,
   IconMail,
   IconHelp,
@@ -155,14 +154,11 @@ function AppShell() {
               <SidebarLink to="/domains" icon={<IconGlobe />}>
                 {t('navDomains')}
               </SidebarLink>
-              <SidebarLink to="/plans" icon={<IconCard />}>
-                {t('navPlans')}
+              <SidebarLink to="/dashboard" icon={<IconDashboard />}>
+                {t('navDashboard')}
               </SidebarLink>
               <SidebarLink to="/settings" icon={<IconSettings />}>
                 {t('navSettings')}
-              </SidebarLink>
-              <SidebarLink to="/users" icon={<IconUser />}>
-                Users register
               </SidebarLink>
               <div className="nav-divider" role="separator" />
               <SidebarLink to="/security" icon={<IconShield />}>
@@ -195,7 +191,7 @@ function AppShell() {
             <div className="sidebar-tip">
               <strong>{t('tipTitle')}</strong>
               <span>{t('tipText')}</span>
-              <NavLink to="/plans" className="sidebar-tip-btn">
+              <NavLink to="/dashboard" className="sidebar-tip-btn">
                 {t('tipBtn')}
               </NavLink>
             </div>
@@ -234,7 +230,8 @@ function AppShell() {
               <Route path="/stats" element={<StatsPage />} />
               <Route path="/templates" element={<TemplatesPage />} />
               <Route path="/domains" element={<DomainsPage />} />
-              <Route path="/plans" element={<PlansPage />} />
+              <Route path="/dashboard" element={<DashboardOverviewPage />} />
+              <Route path="/plans" element={<Navigate to="/dashboard" replace />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/users" element={<UsersPage />} />
               <Route path="/security" element={<SecurityPage />} />

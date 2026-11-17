@@ -10,6 +10,8 @@ import {
   IconPhone,
   IconTikTok,
   IconUser,
+  IconViber,
+  IconWhatsApp,
   IconYouTube,
 } from '../components/Icons';
 import { formatShopLabel } from '../constants/shops';
@@ -22,6 +24,16 @@ function IconSms(props) {
       <path d="M8 11h8M8 14h5" />
     </svg>
   );
+}
+
+function toViberHref(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  if (/^viber:/i.test(raw) || /^https?:\/\//i.test(raw)) return raw;
+  const digits = raw.replace(/[^\d+]/g, '');
+  if (!digits) return '';
+  const num = digits.startsWith('+') ? digits.slice(1) : digits;
+  return `viber://chat?number=${encodeURIComponent(num)}`;
 }
 
 export default function ScanPage() {
@@ -101,6 +113,15 @@ export default function ScanPage() {
       : [];
 
   const personalSocial = [];
+  if (profile.whatsappLink) {
+    personalSocial.push({
+      key: 'whatsapp',
+      href: profile.whatsappLink,
+      label: 'WhatsApp',
+      tone: 'wa',
+      icon: <IconWhatsApp />,
+    });
+  }
   if (profile.facebookLink) {
     personalSocial.push({
       key: 'facebook',
@@ -139,10 +160,12 @@ export default function ScanPage() {
     .map((p) => String(p || '').trim())
     .filter(Boolean);
   const primaryPhone = personalPhones[0] || '';
+  const viberHref = toViberHref(profile.viberNumber);
   const position = profile.position || profile.description || '';
   const includeShop = profile.includeShop !== false;
   const hasShopBlock = includeShop && (Boolean(profile.shopName) || branches.length > 0);
   const hasPhotos = profile.photos?.length > 0;
+  const hasContactOrbs = Boolean(primaryPhone || profile.personalEmail || viberHref);
 
   return (
     <div className="scan-v2">
@@ -176,10 +199,16 @@ export default function ScanPage() {
           <div className="scan-v2-identity">
             <h1>{profile.name}</h1>
             {position ? <p className="scan-v2-role">{position}</p> : null}
+            {profile.personalLocation ? (
+              <p className="scan-v2-location">
+                <IconMap />
+                <span>{profile.personalLocation}</span>
+              </p>
+            ) : null}
             <p className="scan-v2-tagline">Proudly serving with 29 Jewellery</p>
           </div>
 
-          {(primaryPhone || profile.personalEmail) && (
+          {hasContactOrbs ? (
             <div className="scan-v2-orbs">
               {primaryPhone ? (
                 <a className="scan-v2-orb" href={`sms:${primaryPhone}`}>
@@ -205,8 +234,16 @@ export default function ScanPage() {
                   <small>Email</small>
                 </a>
               ) : null}
+              {viberHref ? (
+                <a className="scan-v2-orb" href={viberHref}>
+                  <span className="orb-icon">
+                    <IconViber />
+                  </span>
+                  <small>Viber</small>
+                </a>
+              ) : null}
             </div>
-          )}
+          ) : null}
 
           {personalSocial.length > 0 && (
             <div className="scan-v2-social">

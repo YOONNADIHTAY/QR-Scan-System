@@ -60,7 +60,23 @@ const ICONS = {
     '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19.2 8.4a5.9 5.9 0 0 1-3.7-1.3v7.4a5.8 5.8 0 1 1-5-5.7c.3 0 .6 0 .9.1v2.9a2.9 2.9 0 1 0 2.1 2.8V3.8h2.8c.1 1.1.6 2.2 1.4 3 .8.7 1.8 1.2 2.9 1.4v2.2z"/></svg>',
   youtube:
     '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M22 12.1c0-1.6-.1-3.1-.4-3.7a2.9 2.9 0 0 0-2-2C18 6 12 6 12 6s-6 0-7.6.4a2.9 2.9 0 0 0-2 2C2.1 9 2 10.5 2 12.1s.1 3.1.4 3.7a2.9 2.9 0 0 0 2 2C6 18.2 12 18.2 12 18.2s6 0 7.6-.4a2.9 2.9 0 0 0 2-2c.3-.6.4-2.1.4-3.7zM10 15.1V9.1l5.2 3-5.2 3z"/></svg>',
+  viber:
+    '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12.1 2.1c-4.9 0-8.9 3.5-8.9 7.9 0 2.5 1.3 4.7 3.3 6.2l-.7 3.4 3.6-1.1c.8.2 1.7.3 2.7.3 4.9 0 8.9-3.5 8.9-7.9S17 2.1 12.1 2.1zm4.4 10.6c-.2.5-1 .9-1.4 1-.4.1-.8.2-2.6-.5-2.2-.9-3.6-3.2-3.7-3.3-.1-.1-1-1.3-1-2.5s.6-1.8.9-2c.2-.2.5-.3.7-.3h.5c.2 0 .4 0 .6.4.2.5.7 1.7.8 1.8.1.1.1.3 0 .5l-.4.6c-.1.2-.3.3-.1.6.2.3.8 1.3 1.7 2.1 1.2 1 2.2 1.4 2.5 1.5.3.1.5.1.7-.1.2-.2.7-.8.9-1.1.2-.3.4-.2.6-.1.2.1 1.6.8 1.9.9.3.1.5.2.5.3.1.2 0 .8-.2 1.3z"/></svg>',
+  whatsapp:
+    '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12.04 2.1a9.9 9.9 0 0 0-8.5 14.9L2.1 21.9l5-1.3a9.9 9.9 0 1 0 4.94-18.5zm5.78 14.1c-.24.68-1.4 1.24-1.94 1.32-.5.07-1.13.1-1.82-.11-.42-.13-.96-.31-1.66-.61-2.92-1.26-4.82-4.2-4.97-4.4-.14-.2-1.2-1.6-1.2-3.05 0-1.45.76-2.16 1.03-2.45.27-.29.59-.36.79-.36h.57c.18 0 .42-.07.66.5.24.59.82 2.02.89 2.17.07.15.12.32.02.52-.1.2-.15.32-.3.5-.15.17-.31.39-.45.52-.15.15-.3.31-.13.6.17.3.76 1.25 1.63 2.03 1.12 1 2.07 1.32 2.37 1.47.3.15.47.12.64-.07.18-.2.74-.86.94-1.16.2-.3.4-.25.67-.15.27.1 1.72.81 2.01.96.3.15.5.22.57.34.08.13.08.74-.16 1.42z"/></svg>',
+  map:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s6.5-5.2 6.5-10.2A6.5 6.5 0 0 0 5.5 10.8C5.5 15.8 12 21 12 21z"/><circle cx="12" cy="10.5" r="2.4"/></svg>',
 };
+
+function toViberHref(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  if (/^viber:/i.test(raw) || /^https?:\/\//i.test(raw)) return raw;
+  const digits = raw.replace(/[^\d+]/g, '');
+  if (!digits) return '';
+  const num = digits.startsWith('+') ? digits.slice(1) : digits;
+  return `viber://chat?number=${encodeURIComponent(num)}`;
+}
 
 function contactRow({ href, label, value, tone, icon, external }) {
   const target = external ? ' target="_blank" rel="noreferrer"' : '';
@@ -74,6 +90,14 @@ function renderScanHtml(profile) {
     includeShop && (Boolean(profile.shopName) || branches.length > 0);
 
   const social = [];
+  if (profile.whatsappLink) {
+    social.push({
+      href: profile.whatsappLink,
+      label: 'WhatsApp',
+      tone: 'wa',
+      icon: ICONS.whatsapp,
+    });
+  }
   if (profile.facebookLink) {
     social.push({
       href: profile.facebookLink,
@@ -128,6 +152,18 @@ function renderScanHtml(profile) {
         value: profile.personalEmail,
         tone: 'mail',
         icon: ICONS.mail,
+      })
+    );
+  }
+  const viberForRows = toViberHref(profile.viberNumber);
+  if (viberForRows) {
+    personalRows.push(
+      contactRow({
+        href: viberForRows,
+        label: 'Viber',
+        value: String(profile.viberNumber || '').trim(),
+        tone: 'phone',
+        icon: ICONS.viber,
       })
     );
   }
@@ -226,7 +262,12 @@ function renderScanHtml(profile) {
     : '';
 
   const primaryPhone = personalPhones[0] || '';
+  const viberHref = toViberHref(profile.viberNumber);
   const position = profile.position || profile.description || '';
+  const personalLocation = String(profile.personalLocation || '').trim();
+  const locationHtml = personalLocation
+    ? `<p class="location">${ICONS.map}<span>${escapeHtml(personalLocation)}</span></p>`
+    : '';
   const orbHtml = [
     primaryPhone
       ? `<a class="orb" href="sms:${escapeHtml(primaryPhone)}"><span class="orb-icon">${ICONS.phone}</span><small>Text</small></a>`
@@ -236,6 +277,9 @@ function renderScanHtml(profile) {
       : '',
     profile.personalEmail
       ? `<a class="orb" href="mailto:${escapeHtml(profile.personalEmail)}"><span class="orb-icon">${ICONS.mail}</span><small>Email</small></a>`
+      : '',
+    viberHref
+      ? `<a class="orb" href="${escapeHtml(viberHref)}"><span class="orb-icon">${ICONS.viber}</span><small>Viber</small></a>`
       : '',
   ]
     .filter(Boolean)
@@ -330,8 +374,13 @@ function renderScanHtml(profile) {
     }
     h1 { margin:0; font-size:1.45rem; color:#0a2744; letter-spacing:-.02em; }
     .role { margin:.3rem 0 0; color:#145a96; font-weight:700; font-size:.92rem; }
+    .location {
+      margin:.4rem 0 0; color:#64748b; font-size:.84rem; font-weight:600;
+      display:inline-flex; align-items:center; justify-content:center; gap:.3rem;
+    }
+    .location svg { width:14px; height:14px; color:#145a96; flex-shrink:0; }
     .tagline { margin:.35rem 0 0; color:#64748b; font-size:.82rem; }
-    .orbs { display:flex; justify-content:center; gap:1.1rem; margin-top:1.15rem; }
+    .orbs { display:flex; flex-wrap:wrap; justify-content:center; gap:.85rem 1rem; margin-top:1.15rem; }
     .orb { display:grid; gap:.35rem; justify-items:center; text-decoration:none; color:#0a2744; }
     .orb-icon {
       width:58px; height:58px; border-radius:999px; display:grid; place-items:center;
@@ -346,6 +395,7 @@ function renderScanHtml(profile) {
       text-decoration:none; border:1px solid #dbe7f3; background:#f5f9fd; color:#0a2744;
     }
     .social a svg { width:16px; height:16px; }
+    .social a.wa { color:#25d366; }
     .social a.fb { color:#1877f2; }
     .social a.tt { color:#111; }
     .social a.yt { color:#e11d48; }
@@ -409,6 +459,7 @@ function renderScanHtml(profile) {
       </div>
       <h1>${escapeHtml(profile.name || 'Profile')}</h1>
       ${position ? `<p class="role">${escapeHtml(position)}</p>` : ''}
+      ${locationHtml}
       <p class="tagline">Proudly serving with 29 Jewellery</p>
       ${orbHtml ? `<div class="orbs">${orbHtml}</div>` : ''}
       ${socialHtml ? `<div class="social">${socialHtml}</div>` : ''}

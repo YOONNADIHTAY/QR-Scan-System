@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { createProfile, getProfile, updateProfile } from '../api';
 import BranchFields, { emptyBranch, normalizeBranchPhones } from '../components/BranchFields';
@@ -16,6 +16,8 @@ import {
   IconStore,
   IconTikTok,
   IconTrash,
+  IconViber,
+  IconWhatsApp,
   IconYouTube,
 } from '../components/Icons';
 import usePublicBase from '../hooks/usePublicBase';
@@ -54,9 +56,12 @@ const empty = {
   position: '',
   personalPhones: [''],
   personalEmail: '',
+  personalLocation: '',
+  viberNumber: '',
   includeShop: true,
   shopName: '29 Jewellery',
   shopNo: '',
+  whatsappLink: '',
   facebookLink: '',
   tiktokLink: '',
   youtubeLink: '',
@@ -148,9 +153,12 @@ export default function GeneratePage({ forcedId = null, staffMode = false }) {
           position: p.position || p.description || '',
           personalPhones: normalizePersonalPhones(p),
           personalEmail: p.personalEmail || '',
+          personalLocation: p.personalLocation || '',
+          viberNumber: p.viberNumber || '',
           includeShop: p.includeShop !== false,
           shopName: shop.shopName,
           shopNo: shop.shopNo,
+          whatsappLink: p.whatsappLink || '',
           facebookLink: p.facebookLink || '',
           tiktokLink: p.tiktokLink || '',
           youtubeLink: p.youtubeLink || '',
@@ -253,8 +261,11 @@ export default function GeneratePage({ forcedId = null, staffMode = false }) {
       fd.append('personalPhone', phones[0] || '');
       fd.append('personalPhones', JSON.stringify(phones));
       fd.append('personalEmail', form.personalEmail.trim());
+      fd.append('personalLocation', form.personalLocation.trim());
+      fd.append('viberNumber', form.viberNumber.trim());
       fd.append('includeShop', form.includeShop ? 'true' : 'false');
       fd.append('shopName', formatShopName(form.shopName, form.shopNo));
+      fd.append('whatsappLink', form.whatsappLink.trim());
       fd.append('facebookLink', form.facebookLink.trim());
       fd.append('tiktokLink', form.tiktokLink.trim());
       fd.append('youtubeLink', form.youtubeLink.trim());
@@ -397,10 +408,9 @@ export default function GeneratePage({ forcedId = null, staffMode = false }) {
             Personal information
           </h2>
           <div className="form-grid">
-            <div className="field full-span">
-              <label htmlFor="avatar">
-                Profile photo
-              </label>
+            <div className="field full-span executive-profile-field">
+              <label htmlFor="avatar">Profile photo</label>
+              <p className="field-hint">Upload or change the profile photo shown on the scan card.</p>
               <div className="file-pick">
                 <input
                   id="avatar"
@@ -414,7 +424,7 @@ export default function GeneratePage({ forcedId = null, staffMode = false }) {
                   }}
                 />
                 <label htmlFor="avatar" className="file-pick-btn">
-                  Choose File
+                  {logoSrc ? 'Change photo' : 'Choose photo'}
                 </label>
                 {avatarFile?.name || (!removeAvatar && avatarUrl) ? (
                   <span className="file-pick-name">
@@ -424,7 +434,7 @@ export default function GeneratePage({ forcedId = null, staffMode = false }) {
               </div>
               {logoSrc && (
                 <div className="avatar-preview-row">
-                  <img className="avatar-preview" src={logoSrc} alt="Profile" />
+                  <img className="avatar-preview" src={logoSrc} alt="Executive profile" />
                   <button type="button" className="btn btn-danger" onClick={clearAvatar}>
                     Remove photo
                   </button>
@@ -479,6 +489,18 @@ export default function GeneratePage({ forcedId = null, staffMode = false }) {
                   onChange={(e) => setField('position', e.target.value)}
                 />
               ) : null}
+            </div>
+            <div className="field">
+              <label htmlFor="personalLocation">
+                <IconMap /> Location
+              </label>
+              <input
+                id="personalLocation"
+                type="text"
+                value={form.personalLocation}
+                placeholder=""
+                onChange={(e) => setField('personalLocation', e.target.value)}
+              />
             </div>
             <div className="field field-phones full-span">
               <div className="field-label-row">
@@ -540,6 +562,29 @@ export default function GeneratePage({ forcedId = null, staffMode = false }) {
                 value={form.personalEmail}
                 placeholder=""
                 onChange={(e) => setField('personalEmail', e.target.value)}
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="viberNumber">
+                <IconViber /> Viber
+              </label>
+              <input
+                id="viberNumber"
+                type="tel"
+                value={form.viberNumber}
+                placeholder=""
+                onChange={(e) => setField('viberNumber', e.target.value)}
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="whatsapp">
+                <IconWhatsApp /> WhatsApp link
+              </label>
+              <input
+                id="whatsapp"
+                type="url"
+                value={form.whatsappLink}
+                onChange={(e) => setField('whatsappLink', e.target.value)}
               />
             </div>
             <div className="field">

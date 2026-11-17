@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   createProfile,
@@ -20,7 +20,7 @@ import {
 } from '../auth';
 import usePublicBase from '../hooks/usePublicBase';
 import { useI18n } from '../I18nContext';
-import { IconPlus } from '../components/Icons';
+import { IconPlus, IconQrCodes, IconStats, IconUser, IconShield } from '../components/Icons';
 
 function PageFrame({ title, desc, actions, children }) {
   return (
@@ -401,23 +401,201 @@ export function DomainsPage() {
   );
 }
 
-export function PlansPage() {
-  const { t } = useI18n();
+function formatDashTime(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function ActivityLineChart({ series }) {
+  const points = Array.isArray(series) && series.length ? series : [];
+  const width = 560;
+  const height = 220;
+  const padX = 36;
+  const padY = 24;
+  const maxY = Math.max(5, ...points.map((p) => Number(p.count) || 0));
+  const step = Math.ceil(maxY / 4) || 1;
+  const top = step * 4;
+  const innerW = width - padX * 2;
+  const innerH = height - padY * 2;
+  const coords = points.map((p, i) => {
+    const x =
+      points.length <= 1
+        ? padX + innerW / 2
+        : padX + (i / (points.length - 1)) * innerW;
+    const y = padY + innerH - ((Number(p.count) || 0) / top) * innerH;
+    return { x, y, label: p.label || '', count: Number(p.count) || 0 };
+  });
+  const path = coords
+    .map((c, i) => `${i === 0 ? 'M' : 'L'} ${c.x.toFixed(1)} ${c.y.toFixed(1)}`)
+    .join(' ');
+  const grid = [0, 1, 2, 3, 4].map((i) => {
+    const y = padY + (innerH * i) / 4;
+    const value = top - step * i;
+    return { y, value };
+  });
+
   return (
-    <PageFrame title={t('plansTitle')} desc={t('plansDesc')}>
-      <section className="panel-card sidebar-page-card plan-card">
-        <p className="plan-badge">{t('planActive')}</p>
-        <h3>{t('planName')}</h3>
-        <p>{t('planText')}</p>
-        <ul className="plan-list">
-          <li>Users QR create / edit / delete</li>
-          <li>Bulk generation</li>
-          <li>Cloudflare public scan links</li>
-          <li>Local admin sign-in</li>
-        </ul>
-      </section>
+    <div className="dash-overview-chart-wrap">
+      <svg
+        className="dash-overview-chart"
+        viewBox={`0 0 ${width} ${height}`}
+        role="img"
+        aria-label="Weekly scan activity"
+      >
+        {grid.map((g) => (
+          <g key={`g-${g.value}`}>
+            <line
+              x1={padX}
+              x2={width - padX}
+              y1={g.y}
+              y2={g.y}
+              className="dash-chart-grid"
+            />
+            <text x={8} y={g.y + 4} className="dash-chart-axis">
+              {g.value}
+            </text>
+          </g>
+        ))}
+        {path ? <path d={path} className="dash-chart-line" fill="none" /> : null}
+        {coords.map((c) => (
+          <g key={`${c.label}-${c.x}`}>
+            <circle cx={c.x} cy={c.y} r="4.5" className="dash-chart-dot" />
+            <text x={c.x} y={height - 4} textAnchor="middle" className="dash-chart-axis">
+              {c.label}
+            </text>
+          </g>
+        ))}
+      </svg>
+    </div>
+  );
+}
+
+export function DashboardOverviewPage() {
+  const { t } = useI18n();
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    getAdminStats()
+      .then(setStats)
+      .catch((err) => setError(err.message || 'Failed to load dashboard'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const kpis = useMemo(() => {
+    if (!stats) return [];
+    return [
+      {
+        key: 'qr',
+        tone: 'blue',
+        value: stats.totalProfiles ?? 0,
+        label: t('dashTotalQr'),
+        icon: <IconQrCodes />,
+      },
+      {
+        key: 'scans',
+        tone: 'gold',
+        value: stats.totalScans ?? 0,
+        label: t('dashTotalScans'),
+        icon: <IconStats />,
+      },
+      {
+        key: 'staff',
+        tone: 'green',
+        value: stats.totalStaff ?? 0,
+        label: t('dashStaff'),
+        icon: <IconUser />,
+      },
+      {
+        key: 'members',
+        tone: 'purple',
+        value: stats.activeProfiles ?? 0,
+        label: t('dashMembers'),
+        icon: <IconShield />,
+      },
+    ];
+  }, [stats, t]);
+
+  return (
+    <PageFrame title={t('dashTitle')} desc={t('dashDesc')}>
+      {error ? <div className="error-banner">{error}</div> : null}
+      {loading || !stats ? (
+        <div className="loading">Loading dashboard…</div>
+      ) : (
+        <section className="dash-overview-shell">
+          <header className="dash-overview-head">
+            <div>
+              <h2>29 Jewellery</h2>
+              <p>Premium QR Management</p>
+            </div>
+            <span className="dash-overview-badge">{t('roleAdmin')}</span>
+          </header>
+
+          <div className="dash-overview-kpis">
+            {kpis.map((card) => (
+              <article key={card.key} className={`dash-kpi-card tone-${card.tone}`}>
+                <span className="dash-kpi-icon" aria-hidden="true">
+                  {card.icon}
+                </span>
+                <strong>{Number(card.value).toLocaleString()}</strong>
+                <span>{card.label}</span>
+              </article>
+            ))}
+          </div>
+
+          <div className="dash-overview-panels">
+            <article className="dash-overview-panel">
+              <div className="dash-overview-panel-head">
+                <h3>{t('dashActivity')}</h3>
+                <span>{t('dashActivityHint')}</span>
+              </div>
+              <ActivityLineChart series={stats.last7 || []} />
+            </article>
+
+            <article className="dash-overview-panel">
+              <div className="dash-overview-panel-head">
+                <h3>{t('dashRecent')}</h3>
+                <span>{stats.scansToday || 0} {t('dashScansToday')}</span>
+              </div>
+              <ul className="dash-activity-list">
+                {(stats.recent || []).length ? (
+                  (stats.recent || []).map((row) => (
+                    <li key={row.id}>
+                      <div>
+                        <strong>{row.title}</strong>
+                        <small>{formatDashTime(row.at)}</small>
+                      </div>
+                      <span className={`dash-activity-badge tone-${row.tone || 'qr'}`}>
+                        {row.badge}
+                      </span>
+                    </li>
+                  ))
+                ) : (
+                  <li className="dash-activity-empty">
+                    <strong>{t('dashNoActivity')}</strong>
+                    <small>{t('dashNoActivityHint')}</small>
+                  </li>
+                )}
+              </ul>
+            </article>
+          </div>
+        </section>
+      )}
     </PageFrame>
   );
+}
+
+/** @deprecated kept as alias for old /plans links */
+export function PlansPage() {
+  return <DashboardOverviewPage />;
 }
 
 export function SettingsPage() {

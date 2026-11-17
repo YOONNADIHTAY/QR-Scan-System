@@ -202,6 +202,22 @@ export function IconMail(props) {
   );
 }
 
+export function IconViber(props) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" {...props}>
+      <path d="M12.1 2.1c-4.9 0-8.9 3.5-8.9 7.9 0 2.5 1.3 4.7 3.3 6.2l-.7 3.4 3.6-1.1c.8.2 1.7.3 2.7.3 4.9 0 8.9-3.5 8.9-7.9S17 2.1 12.1 2.1zm4.4 10.6c-.2.5-1 .9-1.4 1-.4.1-.8.2-2.6-.5-2.2-.9-3.6-3.2-3.7-3.3-.1-.1-1-1.3-1-2.5s.6-1.8.9-2c.2-.2.5-.3.7-.3h.5c.2 0 .4 0 .6.4.2.5.7 1.7.8 1.8.1.1.1.3 0 .5l-.4.6c-.1.2-.3.3-.1.6.2.3.8 1.3 1.7 2.1 1.2 1 2.2 1.4 2.5 1.5.3.1.5.1.7-.1.2-.2.7-.8.9-1.1.2-.3.4-.2.6-.1.2.1 1.6.8 1.9.9.3.1.5.2.5.3.1.2 0 .8-.2 1.3z" />
+    </svg>
+  );
+}
+
+export function IconWhatsApp(props) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" {...props}>
+      <path d="M12.04 2.1a9.9 9.9 0 0 0-8.5 14.9L2.1 21.9l5-1.3a9.9 9.9 0 1 0 4.94-18.5zm5.78 14.1c-.24.68-1.4 1.24-1.94 1.32-.5.07-1.13.1-1.82-.11-.42-.13-.96-.31-1.66-.61-2.92-1.26-4.82-4.2-4.97-4.4-.14-.2-1.2-1.6-1.2-3.05 0-1.45.76-2.16 1.03-2.45.27-.29.59-.36.79-.36h.57c.18 0 .42-.07.66.5.24.59.82 2.02.89 2.17.07.15.12.32.02.52-.1.2-.15.32-.3.5-.15.17-.31.39-.45.52-.15.15-.3.31-.13.6.17.3.76 1.25 1.63 2.03 1.12 1 2.07 1.32 2.37 1.47.3.15.47.12.64-.07.18-.2.74-.86.94-1.16.2-.3.4-.25.67-.15.27.1 1.72.81 2.01.96.3.15.5.22.57.34.08.13.08.74-.16 1.42z" />
+    </svg>
+  );
+}
+
 export function IconMap(props) {
   return (
     <Svg {...props}>
@@ -264,10 +280,13 @@ export function IconStore(props) {
 export function IconBulk(props) {
   return (
     <Svg {...props}>
-      <rect x="3.5" y="3.5" width="7" height="7" rx="1.4" />
-      <rect x="13.5" y="3.5" width="7" height="7" rx="1.4" />
-      <rect x="3.5" y="13.5" width="7" height="7" rx="1.4" />
-      <rect x="13.5" y="13.5" width="7" height="7" rx="1.4" />
+      <rect x="4" y="6.5" width="11" height="13" rx="1.8" />
+      <path d="M8 3.8h9.5a1.8 1.8 0 0 1 1.8 1.8V15" />
+      <path d="M7 11.2h5" />
+      <path d="M7 14.2h3.5" />
+      <circle cx="17.6" cy="17.6" r="3.3" />
+      <path d="M17.6 16v3.2" />
+      <path d="M16 17.6h3.2" />
     </Svg>
   );
 }
@@ -279,6 +298,17 @@ export function IconStats(props) {
       <path d="M7 16.5V10" />
       <path d="M12 16.5V6.5" />
       <path d="M17 16.5v-4" />
+    </Svg>
+  );
+}
+
+export function IconDashboard(props) {
+  return (
+    <Svg {...props}>
+      <rect x="3.5" y="3.5" width="7.5" height="7.5" rx="1.5" />
+      <rect x="13" y="3.5" width="7.5" height="4.5" rx="1.5" />
+      <rect x="13" y="10.5" width="7.5" height="10" rx="1.5" />
+      <rect x="3.5" y="13.5" width="7.5" height="7" rx="1.5" />
     </Svg>
   );
 }

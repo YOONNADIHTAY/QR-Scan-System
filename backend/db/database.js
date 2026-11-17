@@ -291,7 +291,9 @@ const store = {
       (sum, p) => sum + (Number(p.scan_count) || 0),
       0
     );
-    const today = new Date().toISOString().slice(0, 10);
+    const now = new Date();
+    const today = now.toISOString().slice(0, 10);
+    const dayMs = 24 * 60 * 60 * 1000;
     const scansToday = data.scans.filter((s) =>
       String(s.at || '').startsWith(today)
     ).length;
@@ -304,6 +306,73 @@ const store = {
         active: p.active !== false,
       }))
       .sort((a, b) => b.scanCount - a.scanCount);
+
+    const last7 = [];
+    for (let i = 6; i >= 0; i -= 1) {
+      const d = new Date(now.getTime() - i * dayMs);
+      const key = d.toISOString().slice(0, 10);
+      last7.push({
+        date: key,
+        label: d.toLocaleDateString(undefined, { weekday: 'short' }),
+        count: data.scans.filter((s) => String(s.at || '').startsWith(key))
+          .length,
+      });
+    }
+
+    const profileName = (id) =>
+      data.profiles.find((p) => p.id === id)?.name || 'Users';
+
+    const recent = [];
+    data.scans
+      .slice()
+      .sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')))
+      .slice(0, 8)
+      .forEach((s) => {
+        recent.push({
+          id: `scan-${s.id || s.at}`,
+          title: `QR scanned · ${profileName(s.profileId)}`,
+          at: s.at || null,
+          badge: 'Scan',
+          tone: 'scan',
+        });
+      });
+    data.profiles
+      .slice()
+      .sort((a, b) =>
+        String(b.created_at || b.updated_at || '').localeCompare(
+          String(a.created_at || a.updated_at || '')
+        )
+      )
+      .slice(0, 6)
+      .forEach((p) => {
+        recent.push({
+          id: `qr-${p.id}`,
+          title: `New Executive QR · ${p.name || 'Users'}`,
+          at: p.created_at || p.updated_at || null,
+          badge: 'QR',
+          tone: 'qr',
+        });
+      });
+    data.users
+      .filter((u) => u.role === 'staff')
+      .slice()
+      .sort((a, b) =>
+        String(b.created_at || '').localeCompare(String(a.created_at || ''))
+      )
+      .slice(0, 6)
+      .forEach((u) => {
+        recent.push({
+          id: `staff-${u.id}`,
+          title: `New User registered · ${u.name || u.email || 'Users'}`,
+          at: u.created_at || null,
+          badge: 'User',
+          tone: 'staff',
+        });
+      });
+    recent.sort((a, b) =>
+      String(b.at || '').localeCompare(String(a.at || ''))
+    );
+
     return {
       totalProfiles: data.profiles.length,
       activeProfiles: data.profiles.filter((p) => p.active !== false).length,
@@ -314,6 +383,8 @@ const store = {
       totalScans,
       scansToday,
       byProfile,
+      last7,
+      recent: recent.slice(0, 10),
     };
   },
 

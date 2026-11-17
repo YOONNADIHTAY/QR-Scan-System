@@ -28,7 +28,7 @@ function formatDate(value) {
 function profileType(p) {
   if (p.photos?.length) return 'Product';
   if (p.branches?.length > 1) return 'Branches';
-  if (p.facebookLink || p.tiktokLink || p.youtubeLink) return 'Social';
+  if (p.whatsappLink || p.facebookLink || p.tiktokLink || p.youtubeLink) return 'Social';
   return 'Profile';
 }
 
