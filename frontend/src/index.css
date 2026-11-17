@@ -2230,6 +2230,21 @@ select {
   box-shadow: none;
 }
 
+.link-add-phone.is-compact {
+  padding: 0.12rem 0.28rem;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  line-height: 1;
+  min-width: 1.55rem;
+  min-height: 1.55rem;
+  justify-content: center;
+}
+
+.link-add-phone.is-compact svg {
+  width: 0.85rem;
+  height: 0.85rem;
+}
+
 .link-add-phone:hover,
 .link-add-btn:hover {
   background: #eef2f7;

@@ -487,12 +487,14 @@ export default function GeneratePage({ forcedId = null, staffMode = false }) {
                 </label>
                 <button
                   type="button"
-                  className="link-add-phone"
+                  className="link-add-phone is-compact"
                   onClick={() =>
                     setField('personalPhones', [...(form.personalPhones || ['']), ''])
                   }
+                  aria-label="Add phone"
+                  title="Add phone"
                 >
-                  <IconPlus /> Add phone
+                  <IconPlus />
                 </button>
               </div>
               <div className="phone-list">
@@ -502,7 +504,6 @@ export default function GeneratePage({ forcedId = null, staffMode = false }) {
                       <input
                         type="tel"
                         value={phone}
-                        placeholder={phoneIndex === 0 ? 'Primary phone' : `Phone ${phoneIndex + 1}`}
                         onChange={(e) => {
                           const next = [...(form.personalPhones || [''])];
                           next[phoneIndex] = e.target.value;
