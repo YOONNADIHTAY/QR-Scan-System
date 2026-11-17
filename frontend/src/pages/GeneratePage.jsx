@@ -11,13 +11,16 @@ import {
   IconMail,
   IconMap,
   IconPhone,
+  IconPlus,
   IconSave,
   IconStore,
   IconTikTok,
+  IconTrash,
   IconYouTube,
 } from '../components/Icons';
 import usePublicBase from '../hooks/usePublicBase';
 import { isStaff } from '../auth';
+import { POSITION_OPTIONS } from '../constants/positions';
 import { SHOP_NOS } from '../constants/shops';
 
 function parseShopName(full) {
@@ -38,9 +41,18 @@ function formatShopName(name, shopNo) {
   return no ? `${base} Shop ${no}` : base;
 }
 
+function normalizePersonalPhones(p) {
+  if (Array.isArray(p?.personalPhones) && p.personalPhones.length) {
+    return p.personalPhones.map((x) => String(x || ''));
+  }
+  if (p?.personalPhone) return [String(p.personalPhone)];
+  return [''];
+}
+
 const empty = {
   name: '',
-  personalPhone: '',
+  position: '',
+  personalPhones: [''],
   personalEmail: '',
   includeShop: true,
   shopName: '29 Jewellery',
@@ -109,6 +121,8 @@ export default function GeneratePage({ forcedId = null, staffMode = false }) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(isEdit);
   const [savedId, setSavedId] = useState(id || null);
+  const [positionOther, setPositionOther] = useState(false);
+  const standardPositions = POSITION_OPTIONS.filter((p) => p !== 'Other');
 
   useEffect(() => {
     setSavedId(id || null);
@@ -121,6 +135,7 @@ export default function GeneratePage({ forcedId = null, staffMode = false }) {
       setAvatarFile(null);
       setAvatarPreview('');
       setRemoveAvatar(false);
+      setPositionOther(false);
       setLoading(false);
       return;
     }
@@ -130,7 +145,8 @@ export default function GeneratePage({ forcedId = null, staffMode = false }) {
         const shop = parseShopName(p.shopName || '29 Jewellery');
         setForm({
           name: p.name || '',
-          personalPhone: p.personalPhone || '',
+          position: p.position || p.description || '',
+          personalPhones: normalizePersonalPhones(p),
           personalEmail: p.personalEmail || '',
           includeShop: p.includeShop !== false,
           shopName: shop.shopName,
@@ -143,11 +159,16 @@ export default function GeneratePage({ forcedId = null, staffMode = false }) {
           qrBgColor: p.qrBgColor || '#ffffff',
           qrFrame: p.qrFrame || 'none',
         });
+        const loadedPosition = p.position || p.description || '';
         setExistingPhotos(p.photos || []);
         setAvatarUrl(p.avatarUrl || '');
         setAvatarFile(null);
         setAvatarPreview('');
         setRemoveAvatar(false);
+        setPositionOther(
+          Boolean(loadedPosition) &&
+            !POSITION_OPTIONS.filter((x) => x !== 'Other').includes(loadedPosition)
+        );
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
@@ -222,10 +243,15 @@ export default function GeneratePage({ forcedId = null, staffMode = false }) {
 
     try {
       const fd = new FormData();
+      const phones = (form.personalPhones || [])
+        .map((p) => String(p || '').trim())
+        .filter(Boolean);
       fd.append('name', form.name.trim());
-      fd.append('description', '');
+      fd.append('position', form.position.trim());
+      fd.append('description', form.position.trim());
       fd.append('department', '');
-      fd.append('personalPhone', form.personalPhone.trim());
+      fd.append('personalPhone', phones[0] || '');
+      fd.append('personalPhones', JSON.stringify(phones));
       fd.append('personalEmail', form.personalEmail.trim());
       fd.append('includeShop', form.includeShop ? 'true' : 'false');
       fd.append('shopName', formatShopName(form.shopName, form.shopNo));
@@ -415,15 +441,93 @@ export default function GeneratePage({ forcedId = null, staffMode = false }) {
               />
             </div>
             <div className="field">
-              <label htmlFor="personalPhone">
-                <IconPhone /> Phone no.
-              </label>
-              <input
-                id="personalPhone"
-                type="tel"
-                value={form.personalPhone}
-                onChange={(e) => setField('personalPhone', e.target.value)}
-              />
+              <label htmlFor="position">Position</label>
+              <select
+                id="position"
+                className="field-select"
+                value={
+                  positionOther
+                    ? 'Other'
+                    : standardPositions.includes(form.position)
+                      ? form.position
+                      : ''
+                }
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (v === 'Other') {
+                    setPositionOther(true);
+                    if (standardPositions.includes(form.position)) setField('position', '');
+                  } else {
+                    setPositionOther(false);
+                    setField('position', v);
+                  }
+                }}
+              >
+                <option value="">Select position</option>
+                {POSITION_OPTIONS.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </select>
+              {positionOther ? (
+                <input
+                  className="position-custom-input"
+                  type="text"
+                  placeholder="e.g. Branch Supervisor"
+                  value={form.position}
+                  onChange={(e) => setField('position', e.target.value)}
+                />
+              ) : null}
+            </div>
+            <div className="field field-phones full-span">
+              <div className="field-label-row">
+                <label>
+                  <IconPhone /> Phone no.
+                </label>
+                <button
+                  type="button"
+                  className="link-add-phone"
+                  onClick={() =>
+                    setField('personalPhones', [...(form.personalPhones || ['']), ''])
+                  }
+                >
+                  <IconPlus /> Add phone
+                </button>
+              </div>
+              <div className="phone-list">
+                {(form.personalPhones?.length ? form.personalPhones : ['']).map(
+                  (phone, phoneIndex) => (
+                    <div className="phone-row" key={`personal-phone-${phoneIndex}`}>
+                      <input
+                        type="tel"
+                        value={phone}
+                        placeholder={phoneIndex === 0 ? 'Primary phone' : `Phone ${phoneIndex + 1}`}
+                        onChange={(e) => {
+                          const next = [...(form.personalPhones || [''])];
+                          next[phoneIndex] = e.target.value;
+                          setField('personalPhones', next);
+                        }}
+                      />
+                      {(form.personalPhones || []).length > 1 && (
+                        <button
+                          type="button"
+                          className="btn btn-danger"
+                          onClick={() => {
+                            const next = (form.personalPhones || []).filter(
+                              (_, i) => i !== phoneIndex
+                            );
+                            setField('personalPhones', next.length ? next : ['']);
+                          }}
+                          aria-label="Remove phone"
+                        >
+                          <IconTrash />
+                        </button>
+                      )}
+                    </div>
+                  )
+                )}
+              </div>
             </div>
             <div className="field">
               <label htmlFor="personalEmail">

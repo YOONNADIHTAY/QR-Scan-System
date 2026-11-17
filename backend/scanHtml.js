@@ -100,12 +100,21 @@ function renderScanHtml(profile) {
   }
 
   const personalRows = [];
-  if (profile.personalPhone) {
+  const personalPhones = (
+    Array.isArray(profile.personalPhones) && profile.personalPhones.length
+      ? profile.personalPhones
+      : profile.personalPhone
+        ? [profile.personalPhone]
+        : []
+  )
+    .map((p) => String(p || '').trim())
+    .filter(Boolean);
+  for (const phone of personalPhones) {
     personalRows.push(
       contactRow({
-        href: `tel:${profile.personalPhone}`,
+        href: `tel:${phone}`,
         label: 'Phone',
-        value: profile.personalPhone,
+        value: phone,
         tone: 'phone',
         icon: ICONS.phone,
       })
@@ -385,6 +394,11 @@ function renderScanHtml(profile) {
       }
       <p class="kicker">Personal</p>
       <h1>${escapeHtml(profile.name || 'Profile')}</h1>
+      ${
+        profile.position || profile.description
+          ? `<p class="role">${escapeHtml(profile.position || profile.description)}</p>`
+          : ''
+      }
     </header>
 
     ${

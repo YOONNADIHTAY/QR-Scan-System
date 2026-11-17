@@ -179,6 +179,28 @@ function avatarUrl(filename) {
   return filename ? `/uploads/${filename}` : '';
 }
 
+function parsePersonalPhones(value, fallback = '') {
+  if (Array.isArray(value) && value.length) {
+    return value.map((p) => String(p || '').trim()).filter(Boolean);
+  }
+  if (typeof value === 'string' && value.trim()) {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) {
+        return parsed.map((p) => String(p || '').trim()).filter(Boolean);
+      }
+    } catch {
+      /* plain string or comma-separated */
+    }
+    return value
+      .split(/[,;\n]+/)
+      .map((p) => p.trim())
+      .filter(Boolean);
+  }
+  const single = String(fallback || '').trim();
+  return single ? [single] : [];
+}
+
 function mapProfile(row) {
   const branches =
     Array.isArray(row.branches) && row.branches.length
@@ -187,12 +209,18 @@ function mapProfile(row) {
 
   const first = branches[0] || {};
   const includeShop = row.include_shop !== false;
+  const personalPhones = parsePersonalPhones(
+    row.personal_phones,
+    row.personal_phone
+  );
   return {
     id: row.id,
     name: row.name,
     description: row.description || '',
-    department: row.department || row.description || '',
-    personalPhone: row.personal_phone || '',
+    position: row.description || '',
+    department: row.department || '',
+    personalPhone: personalPhones[0] || row.personal_phone || '',
+    personalPhones,
     personalEmail: row.personal_email || '',
     includeShop,
     shopName: row.shop_name || '29 Jewellery',
@@ -280,8 +308,10 @@ router.post('/', requireAdmin, uploadFields, async (req, res) => {
     const {
       name,
       description,
+      position,
       department,
       personalPhone,
+      personalPhones,
       personalEmail,
       includeShop,
       shopName,
@@ -308,13 +338,17 @@ router.post('/', requireAdmin, uploadFields, async (req, res) => {
     const now = new Date().toISOString();
     const avatarFile = req.files?.avatar?.[0];
     const departmentValue = String(department || '').trim() || null;
+    const positionValue =
+      String(position || description || '').trim() || null;
+    const phoneList = parsePersonalPhones(personalPhones, personalPhone);
 
     const profile = {
       id,
       name: name.trim(),
-      description: description || null,
+      description: positionValue,
       department: departmentValue,
-      personal_phone: String(personalPhone || '').trim() || null,
+      personal_phone: phoneList[0] || null,
+      personal_phones: phoneList,
       personal_email: String(personalEmail || '').trim() || null,
       include_shop: shopEnabled,
       shop_name: (shopName || '29 Jewellery').trim(),
@@ -394,8 +428,10 @@ router.put('/:id', requireAuth, requireProfileAccess, uploadFields, async (req, 
     const {
       name,
       description,
+      position,
       department,
       personalPhone,
+      personalPhones,
       personalEmail,
       includeShop,
       shopName,
@@ -423,6 +459,9 @@ router.put('/:id', requireAuth, requireProfileAccess, uploadFields, async (req, 
     const avatarFile = req.files?.avatar?.[0];
     let avatarFilename = existing.avatar_filename || null;
     const departmentValue = String(department || '').trim() || null;
+    const positionValue =
+      String(position || description || '').trim() || null;
+    const phoneList = parsePersonalPhones(personalPhones, personalPhone);
 
     if (removeAvatar === 'true' || removeAvatar === true) {
       removeFileIfExists(avatarFilename);
@@ -436,9 +475,10 @@ router.put('/:id', requireAuth, requireProfileAccess, uploadFields, async (req, 
 
     store.updateProfile(id, {
       name: name.trim(),
-      description: description || null,
+      description: positionValue,
       department: departmentValue,
-      personal_phone: String(personalPhone || '').trim() || null,
+      personal_phone: phoneList[0] || null,
+      personal_phones: phoneList,
       personal_email: String(personalEmail || '').trim() || null,
       include_shop: shopEnabled,
       shop_name: (shopName || '29 Jewellery').trim(),

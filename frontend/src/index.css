@@ -2258,6 +2258,17 @@ select {
   flex: 1;
 }
 
+.position-custom-input {
+  margin-top: 0.55rem;
+}
+
+.employee-position {
+  margin: 0.25rem 0 0;
+  color: #64748b;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
 .branch-phone-list {
   display: grid;
   gap: 0.2rem;

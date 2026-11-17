@@ -119,8 +119,17 @@ export default function ScanPage() {
     });
   }
 
+  const personalPhones = (
+    Array.isArray(profile.personalPhones) && profile.personalPhones.length
+      ? profile.personalPhones
+      : profile.personalPhone
+        ? [profile.personalPhone]
+        : []
+  )
+    .map((p) => String(p || '').trim())
+    .filter(Boolean);
   const hasPersonalBlock = Boolean(
-    profile.personalPhone || profile.personalEmail || personalSocial.length
+    personalPhones.length || profile.personalEmail || personalSocial.length
   );
   const includeShop = profile.includeShop !== false;
   const hasShopBlock =
@@ -146,6 +155,9 @@ export default function ScanPage() {
         <div className="employee-identity">
           <p className="hero-kicker">Personal</p>
           <h1>{profile.name}</h1>
+          {(profile.position || profile.description) && (
+            <p className="employee-position">{profile.position || profile.description}</p>
+          )}
         </div>
       </section>
 
@@ -158,17 +170,17 @@ export default function ScanPage() {
             Personal information
           </h2>
           <div className="contact-list">
-            {profile.personalPhone && (
-              <a className="contact-row" href={`tel:${profile.personalPhone}`}>
+            {personalPhones.map((phone) => (
+              <a className="contact-row" href={`tel:${phone}`} key={phone}>
                 <span className="contact-icon phone">
                   <IconPhone />
                 </span>
                 <span className="contact-copy">
                   <small>Phone</small>
-                  <strong>{profile.personalPhone}</strong>
+                  <strong>{phone}</strong>
                 </span>
               </a>
-            )}
+            ))}
             {profile.personalEmail && (
               <a className="contact-row" href={`mailto:${profile.personalEmail}`}>
                 <span className="contact-icon mail">

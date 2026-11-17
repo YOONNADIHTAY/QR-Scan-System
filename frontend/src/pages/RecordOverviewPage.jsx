@@ -180,6 +180,9 @@ export default function RecordOverviewPage({ forcedId = null }) {
                 <div className="profile-identity-copy">
                   <h4>{profile.name || 'Unnamed customer'}</h4>
                   <div className="profile-chip-row">
+                    {(profile.position || profile.description) ? (
+                      <span className="profile-chip">{profile.position || profile.description}</span>
+                    ) : null}
                     {shopLabel ? <span className="profile-chip tone-shop">{shopLabel}</span> : null}
                     {branchName ? <span className="profile-chip">{branchName}</span> : null}
                   </div>
@@ -197,8 +200,24 @@ export default function RecordOverviewPage({ forcedId = null }) {
                 </article>
                 <article className="profile-contact-card">
                   <span>Phone</span>
-                  {profile.personalPhone ? (
-                    <a href={`tel:${profile.personalPhone}`}>{profile.personalPhone}</a>
+                  {(
+                    Array.isArray(profile.personalPhones) && profile.personalPhones.length
+                      ? profile.personalPhones
+                      : profile.personalPhone
+                        ? [profile.personalPhone]
+                        : []
+                  ).length ? (
+                    <div className="profile-phone-stack">
+                      {(
+                        Array.isArray(profile.personalPhones) && profile.personalPhones.length
+                          ? profile.personalPhones
+                          : [profile.personalPhone]
+                      ).map((phone) => (
+                        <a href={`tel:${phone}`} key={phone}>
+                          {phone}
+                        </a>
+                      ))}
+                    </div>
                   ) : (
                     <strong>—</strong>
                   )}
