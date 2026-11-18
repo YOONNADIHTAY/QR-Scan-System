@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { IconPhone, IconTrash } from './Icons';
+import { IconPhone, IconPlus, IconTrash } from './Icons';
+import { SHOP_NOS, formatShopLabel } from '../constants/shops';
 import {
   geocodeAddress,
   toGoogleMapsQueryUrl,
@@ -35,7 +36,14 @@ function mapsQueryForAddress(address) {
   return toGoogleMapsQueryUrl(`29 Jewellery ${q}, Yangon`);
 }
 
-export default function BranchFields({ branch, index, onChange, onRemove, canRemove }) {
+export default function BranchFields({
+  branch,
+  index,
+  shopBrand = '29 Jewellery',
+  onChange,
+  onRemove,
+  canRemove,
+}) {
   const [query, setQuery] = useState(branch.name || '');
   const [geoBusy, setGeoBusy] = useState(false);
   const [geoNote, setGeoNote] = useState('');
@@ -90,9 +98,14 @@ export default function BranchFields({ branch, index, onChange, onRemove, canRem
     geoTimer.current = window.setTimeout(async () => {
       setGeoBusy(true);
       setGeoNote('Finding shop on Google Maps…');
+      const area = String(query || branch.name || '').trim();
+      // Geocode the street + township (not "29 Jewellery …") so pins stay in the
+      // right area — shop-brand searches often match the wrong township.
       const search = /29\s*jewellery/i.test(trimmed)
         ? trimmed
-        : `29 Jewellery ${trimmed}, Yangon`;
+        : area && !new RegExp(area.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i').test(trimmed)
+          ? `${trimmed}, ${area}, Yangon, Myanmar`
+          : `${trimmed}, Yangon, Myanmar`;
       const coords = await geocodeAddress(search);
       if (coords) {
         onChange(index, {
@@ -103,7 +116,13 @@ export default function BranchFields({ branch, index, onChange, onRemove, canRem
         });
         setGeoNote('Map location found — will show on scan page.');
       } else {
-        // Keep Google search link so scan page still embeds the address query
+        // Keep Google text-search link (no wrong lat/lng pin)
+        onChange(index, {
+          ...next,
+          latitude: null,
+          longitude: null,
+          googleMapLink: mapsQueryForAddress(trimmed),
+        });
         setGeoNote('Using street name for Google Maps on scan page.');
       }
       setGeoBusy(false);
@@ -113,7 +132,23 @@ export default function BranchFields({ branch, index, onChange, onRemove, canRem
   return (
     <div className="branch-card">
       <div className="branch-card-head">
-        <h3>Location</h3>
+        <div className="branch-card-title">
+          <h3>
+            {branch.shopNo
+              ? `${formatShopLabel(branch.shopNo)}${query ? ` · ${query}` : ''}`
+              : query
+                ? query
+                : `Location ${index + 1}`}
+          </h3>
+          {branch.shopNo ? (
+            <p className="branch-card-sub">
+              {String(shopBrand || '29 Jewellery').trim() || '29 Jewellery'}{' '}
+              {formatShopLabel(branch.shopNo)}
+            </p>
+          ) : (
+            <p className="branch-card-sub">Choose a shop number for this location</p>
+          )}
+        </div>
         {canRemove && (
           <button type="button" className="btn btn-danger" onClick={() => onRemove(index)}>
             <IconTrash /> Remove
@@ -122,6 +157,26 @@ export default function BranchFields({ branch, index, onChange, onRemove, canRem
       </div>
 
       <div className="form-grid">
+        <div className="field">
+          <label htmlFor={`branch-shop-${index}`}>Shop no.</label>
+          <div className="shop-name-row">
+            <select
+              id={`branch-shop-${index}`}
+              className="field-select shop-no-select"
+              value={branch.shopNo || ''}
+              onChange={(e) => onChange(index, { ...branch, shopNo: e.target.value })}
+              aria-label="Shop number"
+            >
+              <option value="">Select shop</option>
+              {SHOP_NOS.map((n) => (
+                <option key={n} value={n}>
+                  Shop {n}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
         <div className="field">
           <label>Branch area</label>
           <input value={query} onChange={(e) => setArea(e.target.value)} placeholder="e.g. Tamwe" />
@@ -148,10 +203,12 @@ export default function BranchFields({ branch, index, onChange, onRemove, canRem
             </label>
             <button
               type="button"
-              className="link-add-phone"
+              className="link-add-phone is-compact"
               onClick={() => setPhones([...phones, ''])}
+              aria-label="Add phone"
+              title="Add phone"
             >
-              + Add phone
+              <IconPlus />
             </button>
           </div>
           <div className="phone-list">

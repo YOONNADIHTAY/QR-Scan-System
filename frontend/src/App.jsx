@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Routes, Route, NavLink, Navigate, useLocation, useParams } from 'react-router-dom';
 import GeneratePage from './pages/GeneratePage';
+import QrDesignPage from './pages/QrDesignPage';
+import IdCardPage from './pages/IdCardPage';
 import SavedPage from './pages/SavedPage';
 import ScanPage from './pages/ScanPage';
 import LoginPage from './pages/LoginPage';
@@ -10,7 +12,6 @@ import {
   StatsPage,
   TemplatesPage,
   DomainsPage,
-  DashboardOverviewPage,
   SettingsPage,
   UsersPage,
   SecurityPage,
@@ -30,7 +31,6 @@ import {
   IconGenerate,
   IconQrCodes,
   IconBulk,
-  IconStats,
   IconDashboard,
   IconTemplate,
   IconGlobe,
@@ -38,6 +38,7 @@ import {
   IconShield,
   IconMail,
   IconHelp,
+  IconIdCard,
   IconCollapse,
 } from './components/Icons';
 
@@ -94,15 +95,36 @@ function AppShell() {
   const admin = isAdmin();
   const profile = getAuthProfile();
   const isGenerate =
-    location.pathname === '/' || location.pathname.startsWith('/edit');
+    location.pathname === '/' ||
+    location.pathname.startsWith('/edit') ||
+    location.pathname.startsWith('/design') ||
+    location.pathname.startsWith('/id-card');
   const userLabel = profile?.email || 'User';
   const [collapsed, setCollapsed] = useState(
     () => localStorage.getItem(SIDEBAR_KEY) === '1'
   );
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   useEffect(() => {
     localStorage.setItem(SIDEBAR_KEY, collapsed ? '1' : '0');
   }, [collapsed]);
+
+  useEffect(() => {
+    setMobileNavOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (!mobileNavOpen) return undefined;
+    const onKey = (e) => {
+      if (e.key === 'Escape') setMobileNavOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    document.body.classList.add('mobile-nav-lock');
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.classList.remove('mobile-nav-lock');
+    };
+  }, [mobileNavOpen]);
 
   async function onLogout() {
     await logout();
@@ -110,8 +132,37 @@ function AppShell() {
   }
 
   return (
-    <div className={`dash ${collapsed ? 'sidebar-collapsed' : ''}`}>
-      <aside className="dash-sidebar">
+    <div
+      className={`dash ${collapsed ? 'sidebar-collapsed' : ''} ${
+        mobileNavOpen ? 'mobile-nav-open' : ''
+      }`}
+    >
+      <header className="mobile-topbar">
+        <button
+          type="button"
+          className="mobile-menu-btn"
+          onClick={() => setMobileNavOpen(true)}
+          aria-label="Open menu"
+        >
+          <span />
+          <span />
+          <span />
+        </button>
+        <div className="mobile-topbar-brand">
+          <img src="/29-jewellery-logo.png" alt="" />
+          <strong>29 Jewellery</strong>
+        </div>
+        <span className="mobile-topbar-spacer" aria-hidden="true" />
+      </header>
+
+      <button
+        type="button"
+        className="mobile-nav-scrim"
+        aria-label="Close menu"
+        onClick={() => setMobileNavOpen(false)}
+      />
+
+      <aside className="dash-sidebar" id="app-sidebar">
         <div className="brand">
           <img
             className="brand-mark"
@@ -131,6 +182,14 @@ function AppShell() {
           >
             <IconCollapse />
           </button>
+          <button
+            type="button"
+            className="mobile-nav-close"
+            onClick={() => setMobileNavOpen(false)}
+            aria-label="Close menu"
+          >
+            ×
+          </button>
         </div>
 
         <nav className="dash-nav">
@@ -145,8 +204,8 @@ function AppShell() {
               <SidebarLink to="/saved" icon={<IconQrCodes />}>
                 QR Registry
               </SidebarLink>
-              <SidebarLink to="/stats" icon={<IconStats />}>
-                {t('navStats')}
+              <SidebarLink to="/id-card" icon={<IconIdCard />}>
+                Scan ID Card
               </SidebarLink>
               <SidebarLink to="/templates" icon={<IconTemplate />}>
                 {t('navTemplates')}
@@ -176,6 +235,11 @@ function AppShell() {
               <SidebarLink to="/my-qr" icon={<IconQrCodes />}>
                 My QR
               </SidebarLink>
+              {getStaffProfileId() ? (
+                <SidebarLink to={`/id-card/${getStaffProfileId()}`} icon={<IconIdCard />}>
+                  Scan ID Card
+                </SidebarLink>
+              ) : null}
               <SidebarLink to="/settings" icon={<IconSettings />}>
                 {t('navSettings')}
               </SidebarLink>
@@ -223,14 +287,17 @@ function AppShell() {
           {admin ? (
             <>
               <Route path="/" element={<GeneratePage />} />
+              <Route path="/design/:id" element={<QrDesignPage />} />
               <Route path="/edit/:id" element={<GeneratePage />} />
               <Route path="/record/:id" element={<RecordOverviewPage />} />
+              <Route path="/id-card" element={<IdCardPage />} />
+              <Route path="/id-card/:id" element={<IdCardPage />} />
               <Route path="/saved" element={<SavedPage />} />
               <Route path="/bulk" element={<BulkPage />} />
-              <Route path="/stats" element={<StatsPage />} />
+              <Route path="/dashboard" element={<StatsPage />} />
+              <Route path="/stats" element={<Navigate to="/dashboard" replace />} />
               <Route path="/templates" element={<TemplatesPage />} />
               <Route path="/domains" element={<DomainsPage />} />
-              <Route path="/dashboard" element={<DashboardOverviewPage />} />
               <Route path="/plans" element={<Navigate to="/dashboard" replace />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/users" element={<UsersPage />} />
@@ -246,6 +313,8 @@ function AppShell() {
           ) : (
             <>
               <Route path="/my-qr" element={<StaffHome />} />
+              <Route path="/design/:id" element={<QrDesignPage />} />
+              <Route path="/id-card/:id" element={<IdCardPage />} />
               <Route path="/edit/:id" element={<GeneratePage staffMode />} />
               <Route path="/record/:id" element={<RecordOverviewPage />} />
               <Route path="/settings" element={<SettingsPage />} />

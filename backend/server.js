@@ -8,6 +8,8 @@ const authRouter = require('./routes/auth');
 const store = require('./db/database');
 const { renderScanHtml } = require('./scanHtml');
 const { geocodeQuery } = require('./geocode');
+const { buildContactPdf, safeFileName } = require('./contactPdf');
+const { buildVCard, safeVcfFileName } = require('./vcard');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -137,6 +139,61 @@ app.get('/api/scan/:id', async (req, res) => {
   }
 });
 
+function loadExportProfile(id) {
+  const row = store.getProfile(id);
+  if (!row) return { status: 404, error: 'Profile not found' };
+  if (row.active === false) {
+    return { status: 403, error: 'This QR is deactivated' };
+  }
+  const profile = mapProfile(row);
+  const publicBase = String(publicUrl || '').replace(/\/$/, '');
+  profile.scanUrl = `${publicBase}/scan/${profile.id}`;
+  return { status: 200, profile };
+}
+
+/** Public vCard — Add to Contacts on iOS + Android */
+app.get('/api/scan/:id/vcard', (req, res) => {
+  try {
+    const result = loadExportProfile(req.params.id);
+    if (result.status !== 200) {
+      return res.status(result.status).json({ error: result.error });
+    }
+    const vcf = buildVCard(result.profile);
+    const fileName = safeVcfFileName(result.profile.name);
+    const ua = String(req.headers['user-agent'] || '');
+    const isIOS = /iPhone|iPad|iPod/i.test(ua);
+    res.setHeader('Content-Type', 'text/vcard; charset=utf-8');
+    // iOS prefers inline so Contacts opens; Android works with attachment too
+    res.setHeader(
+      'Content-Disposition',
+      `${isIOS ? 'inline' : 'attachment'}; filename="${fileName}"`
+    );
+    res.send(vcf);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to build contact file' });
+  }
+});
+
+/** Public PDF download — personal info contact card */
+app.get('/api/scan/:id/pdf', (req, res) => {
+  try {
+    const result = loadExportProfile(req.params.id);
+    if (result.status !== 200) {
+      return res.status(result.status).json({ error: result.error });
+    }
+    const pdf = buildContactPdf(result.profile);
+    const fileName = safeFileName(result.profile.name);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.setHeader('Content-Length', pdf.length);
+    res.send(pdf);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to build PDF' });
+  }
+});
+
 const distPath = path.join(__dirname, '..', 'frontend', 'dist');
 const publicAssets = path.join(__dirname, '..', 'frontend', 'public');
 
@@ -165,6 +222,10 @@ app.get('/scan/:id', async (req, res) => {
         );
       return;
     }
+    res.set({
+      'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+      Pragma: 'no-cache',
+    });
     res.type('html').send(renderScanHtml(result.profile));
   } catch (err) {
     console.error(err);

@@ -439,11 +439,17 @@ export default function RecordOverviewPage({ forcedId = null }) {
 
       <div className="record-overview-actions">
         {admin ? (
-          <Link className="btn btn-ghost" to="/saved">
+          <Link className="btn btn-ghost btn-compact" to="/saved">
             Back to Registry
           </Link>
         ) : null}
-        <Link className="btn btn-primary" to={`/edit/${profile.id}`}>
+        <Link className="btn btn-ghost btn-compact" to={`/design/${profile.id}`}>
+          QR Design
+        </Link>
+        <Link className="btn btn-ghost btn-compact" to={`/id-card/${profile.id}`}>
+          Scan ID Card
+        </Link>
+        <Link className="btn btn-primary btn-compact" to={`/edit/${profile.id}`}>
           Edit Record
         </Link>
       </div>

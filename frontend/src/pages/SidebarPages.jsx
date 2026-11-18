@@ -224,6 +224,112 @@ export function BulkPage() {
   );
 }
 
+function formatDashTime(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function relativeScanTime(iso) {
+  if (!iso) return { label: 'Never', tone: 'quiet', hours: null };
+  const ms = Date.now() - Date.parse(iso);
+  if (!Number.isFinite(ms) || ms < 0) return { label: '—', tone: 'quiet', hours: null };
+  const mins = Math.floor(ms / 60000);
+  if (mins < 1) return { label: 'Just now', tone: 'hot', hours: 0 };
+  if (mins < 60) return { label: `${mins}m ago`, tone: 'hot', hours: mins / 60 };
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) {
+    return {
+      label: `${hours}h ago`,
+      tone: hours < 6 ? 'hot' : 'active',
+      hours,
+    };
+  }
+  const days = Math.floor(hours / 24);
+  if (days === 1) return { label: 'Yesterday', tone: 'active', hours };
+  if (days < 7) return { label: `${days}d ago`, tone: 'steady', hours };
+  return { label: `${days}d ago`, tone: 'quiet', hours };
+}
+
+function activityLabel(iso, scanCount) {
+  const rel = relativeScanTime(iso);
+  if (!scanCount) return { label: 'Quiet', tone: 'quiet' };
+  if (rel.tone === 'hot') return { label: 'Live', tone: 'hot' };
+  if (rel.tone === 'active') return { label: 'Active', tone: 'active' };
+  if (rel.tone === 'steady') return { label: 'Steady', tone: 'steady' };
+  return { label: 'Quiet', tone: 'quiet' };
+}
+
+function ActivityLineChart({ series }) {
+  const points = Array.isArray(series) && series.length ? series : [];
+  const width = 560;
+  const height = 220;
+  const padX = 36;
+  const padY = 24;
+  const maxY = Math.max(5, ...points.map((p) => Number(p.count) || 0));
+  const step = Math.ceil(maxY / 4) || 1;
+  const top = step * 4;
+  const innerW = width - padX * 2;
+  const innerH = height - padY * 2;
+  const coords = points.map((p, i) => {
+    const x =
+      points.length <= 1
+        ? padX + innerW / 2
+        : padX + (i / (points.length - 1)) * innerW;
+    const y = padY + innerH - ((Number(p.count) || 0) / top) * innerH;
+    return { x, y, label: p.label || '', count: Number(p.count) || 0 };
+  });
+  const path = coords
+    .map((c, i) => `${i === 0 ? 'M' : 'L'} ${c.x.toFixed(1)} ${c.y.toFixed(1)}`)
+    .join(' ');
+  const grid = [0, 1, 2, 3, 4].map((i) => {
+    const y = padY + (innerH * i) / 4;
+    const value = top - step * i;
+    return { y, value };
+  });
+
+  return (
+    <div className="dash-overview-chart-wrap">
+      <svg
+        className="dash-overview-chart"
+        viewBox={`0 0 ${width} ${height}`}
+        role="img"
+        aria-label="Weekly scan activity"
+      >
+        {grid.map((g) => (
+          <g key={`g-${g.value}`}>
+            <line
+              x1={padX}
+              x2={width - padX}
+              y1={g.y}
+              y2={g.y}
+              className="dash-chart-grid"
+            />
+            <text x={8} y={g.y + 4} className="dash-chart-axis">
+              {g.value}
+            </text>
+          </g>
+        ))}
+        {path ? <path d={path} className="dash-chart-line" fill="none" /> : null}
+        {coords.map((c) => (
+          <g key={`${c.label}-${c.x}`}>
+            <circle cx={c.x} cy={c.y} r="4.5" className="dash-chart-dot" />
+            <text x={c.x} y={height - 4} textAnchor="middle" className="dash-chart-axis">
+              {c.label}
+            </text>
+          </g>
+        ))}
+      </svg>
+    </div>
+  );
+}
+
 export function StatsPage() {
   const { t } = useI18n();
   const [stats, setStats] = useState(null);
@@ -237,73 +343,153 @@ export function StatsPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  const weekScans = useMemo(
+    () => (stats?.last7 || []).reduce((sum, d) => sum + (Number(d.count) || 0), 0),
+    [stats]
+  );
+
+  const ranked = useMemo(() => {
+    const rows = [...(stats?.byProfile || [])];
+    rows.sort((a, b) => {
+      const ta = Date.parse(a.lastScannedAt || '') || 0;
+      const tb = Date.parse(b.lastScannedAt || '') || 0;
+      if (tb !== ta) return tb - ta;
+      return (Number(b.scanCount) || 0) - (Number(a.scanCount) || 0);
+    });
+    return rows;
+  }, [stats]);
+
   return (
     <PageFrame
-      title={t('statsTitle')}
-      desc="QR scan statistics and Users registry overview."
+      title={t('dashTitle')}
+      desc={t('dashDesc')}
     >
       {error ? <div className="error-banner">{error}</div> : null}
       {loading || !stats ? (
         <div className="loading">Loading stats…</div>
       ) : (
-        <>
+        <div className="stats-classic">
           <div className="stats-grid">
-            <article className="stat-card">
-              <strong>{stats.totalScans}</strong>
-              <span>Total QR scans</span>
-            </article>
-            <article className="stat-card">
-              <strong>{stats.scansToday}</strong>
+            <article className="stat-card tone-ink">
+              <span className="stat-kicker">Today</span>
+              <strong>{stats.scansToday || 0}</strong>
               <span>Scans today</span>
             </article>
-            <article className="stat-card">
-              <strong>{stats.totalProfiles}</strong>
-              <span>{t('totalQr')}</span>
+            <article className="stat-card tone-blue">
+              <span className="stat-kicker">This week</span>
+              <strong>{weekScans}</strong>
+              <span>Last 7 days</span>
             </article>
-            <article className="stat-card">
+            <article className="stat-card tone-gold">
+              <span className="stat-kicker">All time</span>
+              <strong>{stats.totalScans || 0}</strong>
+              <span>Total QR scans</span>
+            </article>
+            <article className="stat-card tone-green">
+              <span className="stat-kicker">Live cards</span>
               <strong>
-                {stats.activeStaff}/{stats.totalStaff}
+                {stats.activeProfiles || 0}/{stats.totalProfiles || 0}
               </strong>
-              <span>Active Users accounts</span>
+              <span>Active QR codes</span>
             </article>
           </div>
 
-          <section className="panel-card sidebar-page-card" style={{ marginTop: '1rem' }}>
-            <h3 style={{ margin: '0 0 0.75rem' }}>Scans by Users QR</h3>
+          <div className="stats-classic-panels">
+            <section className="panel-card sidebar-page-card stats-panel">
+              <div className="stats-panel-head">
+                <div>
+                  <h3>Weekly activity</h3>
+                  <p>Scan trend over the last 7 days</p>
+                </div>
+                <span className="stats-live-pill">Time active</span>
+              </div>
+              <ActivityLineChart series={stats.last7 || []} />
+            </section>
+
+            <section className="panel-card sidebar-page-card stats-panel">
+              <div className="stats-panel-head">
+                <div>
+                  <h3>Recent activity</h3>
+                  <p>Latest QR, Users, and scan events</p>
+                </div>
+              </div>
+              <ul className="dash-activity-list">
+                {(stats.recent || []).length ? (
+                  (stats.recent || []).slice(0, 8).map((row) => (
+                    <li key={row.id}>
+                      <div>
+                        <strong>{row.title}</strong>
+                        <small>{formatDashTime(row.at)}</small>
+                      </div>
+                      <span className={`dash-activity-badge tone-${row.tone || 'qr'}`}>
+                        {row.badge}
+                      </span>
+                    </li>
+                  ))
+                ) : (
+                  <li className="dash-activity-empty">
+                    <strong>No recent activity</strong>
+                    <small>Scans and new QR will appear here.</small>
+                  </li>
+                )}
+              </ul>
+            </section>
+          </div>
+
+          <section className="panel-card sidebar-page-card stats-panel">
+            <div className="stats-panel-head">
+              <div>
+                <h3>Scans by Users QR</h3>
+                <p>Sorted by most recently active</p>
+              </div>
+            </div>
             <div className="data-table-wrap">
-              <table className="data-table">
+              <table className="data-table stats-active-table">
                 <thead>
                   <tr>
                     <th>Users / QR</th>
                     <th>Scans</th>
-                    <th>Last scan</th>
+                    <th>Last active</th>
+                    <th>Activity</th>
                     <th>Status</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {(stats.byProfile || []).map((row) => (
-                    <tr key={row.id}>
-                      <td>
-                        <Link to={`/edit/${row.id}`}>{row.name}</Link>
-                      </td>
-                      <td>{row.scanCount}</td>
-                      <td>
-                        {row.lastScannedAt
-                          ? new Date(row.lastScannedAt).toLocaleString()
-                          : '—'}
-                      </td>
-                      <td>
-                        <span className={`tag ${row.active ? 'tag-profile' : 'tag-social'}`}>
-                          {row.active ? 'Active' : 'Inactive'}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
+                  {ranked.map((row) => {
+                    const rel = relativeScanTime(row.lastScannedAt);
+                    const act = activityLabel(row.lastScannedAt, row.scanCount);
+                    return (
+                      <tr key={row.id}>
+                        <td>
+                          <Link to={`/record/${row.id}`}>{row.name}</Link>
+                        </td>
+                        <td>{row.scanCount || 0}</td>
+                        <td>
+                          <div className="stats-time-cell">
+                            <strong>{rel.label}</strong>
+                            <small>
+                              {row.lastScannedAt ? formatDashTime(row.lastScannedAt) : '—'}
+                            </small>
+                          </div>
+                        </td>
+                        <td>
+                          <span className={`stats-activity-pill tone-${act.tone}`}>
+                            {act.label}
+                          </span>
+                        </td>
+                        <td>
+                          <span className={`tag ${row.active ? 'tag-profile' : 'tag-social'}`}>
+                            {row.active ? 'Active' : 'Off'}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
           </section>
-        </>
+        </div>
       )}
     </PageFrame>
   );
@@ -398,82 +584,6 @@ export function DomainsPage() {
         </form>
       </section>
     </PageFrame>
-  );
-}
-
-function formatDashTime(iso) {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '—';
-  return d.toLocaleString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
-
-function ActivityLineChart({ series }) {
-  const points = Array.isArray(series) && series.length ? series : [];
-  const width = 560;
-  const height = 220;
-  const padX = 36;
-  const padY = 24;
-  const maxY = Math.max(5, ...points.map((p) => Number(p.count) || 0));
-  const step = Math.ceil(maxY / 4) || 1;
-  const top = step * 4;
-  const innerW = width - padX * 2;
-  const innerH = height - padY * 2;
-  const coords = points.map((p, i) => {
-    const x =
-      points.length <= 1
-        ? padX + innerW / 2
-        : padX + (i / (points.length - 1)) * innerW;
-    const y = padY + innerH - ((Number(p.count) || 0) / top) * innerH;
-    return { x, y, label: p.label || '', count: Number(p.count) || 0 };
-  });
-  const path = coords
-    .map((c, i) => `${i === 0 ? 'M' : 'L'} ${c.x.toFixed(1)} ${c.y.toFixed(1)}`)
-    .join(' ');
-  const grid = [0, 1, 2, 3, 4].map((i) => {
-    const y = padY + (innerH * i) / 4;
-    const value = top - step * i;
-    return { y, value };
-  });
-
-  return (
-    <div className="dash-overview-chart-wrap">
-      <svg
-        className="dash-overview-chart"
-        viewBox={`0 0 ${width} ${height}`}
-        role="img"
-        aria-label="Weekly scan activity"
-      >
-        {grid.map((g) => (
-          <g key={`g-${g.value}`}>
-            <line
-              x1={padX}
-              x2={width - padX}
-              y1={g.y}
-              y2={g.y}
-              className="dash-chart-grid"
-            />
-            <text x={8} y={g.y + 4} className="dash-chart-axis">
-              {g.value}
-            </text>
-          </g>
-        ))}
-        {path ? <path d={path} className="dash-chart-line" fill="none" /> : null}
-        {coords.map((c) => (
-          <g key={`${c.label}-${c.x}`}>
-            <circle cx={c.x} cy={c.y} r="4.5" className="dash-chart-dot" />
-            <text x={c.x} y={height - 4} textAnchor="middle" className="dash-chart-axis">
-              {c.label}
-            </text>
-          </g>
-        ))}
-      </svg>
-    </div>
   );
 }
 
@@ -704,9 +814,9 @@ export function SettingsPage() {
                     <strong>{t('toolRegistry')}</strong>
                     <span>{t('toolRegistryHint')}</span>
                   </Link>
-                  <Link className="settings-tool-card" to="/stats">
-                    <strong>{t('toolStats')}</strong>
-                    <span>{t('toolStatsHint')}</span>
+                  <Link className="settings-tool-card" to="/dashboard">
+                    <strong>{t('navDashboard')}</strong>
+                    <span>{t('dashDesc')}</span>
                   </Link>
                   <Link className="settings-tool-card" to="/domains">
                     <strong>{t('toolDomains')}</strong>

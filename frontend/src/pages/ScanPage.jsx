@@ -17,15 +17,6 @@ import {
 import { formatShopLabel } from '../constants/shops';
 import { toGoogleMapsQueryUrl, toGoogleMapsUrl } from '../utils/maps';
 
-function IconSms(props) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true" {...props}>
-      <path d="M4.5 6.5h15a1.5 1.5 0 0 1 1.5 1.5v8a1.5 1.5 0 0 1-1.5 1.5H9l-3.5 2.5V16H4.5A1.5 1.5 0 0 1 3 14.5v-6A1.5 1.5 0 0 1 4.5 6.5z" />
-      <path d="M8 11h8M8 14h5" />
-    </svg>
-  );
-}
-
 function toViberHref(value) {
   const raw = String(value || '').trim();
   if (!raw) return '';
@@ -36,11 +27,44 @@ function toViberHref(value) {
   return `viber://chat?number=${encodeURIComponent(num)}`;
 }
 
+function toWhatsAppHref(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  if (/^https?:\/\//i.test(raw) || /^whatsapp:/i.test(raw)) return raw;
+  const digits = raw.replace(/[^\d]/g, '');
+  if (!digits) return '';
+  return `https://wa.me/${digits}`;
+}
+
+const SCAN_BANNER_BGS = [
+  '/scan-bg/bg-1.jpg',
+  '/scan-bg/bg-2.jpg',
+  '/scan-bg/bg-3.jpg',
+];
+
 export default function ScanPage() {
   const { id } = useParams();
   const [profile, setProfile] = useState(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [bgIndex, setBgIndex] = useState(0);
+  const [photoIndex, setPhotoIndex] = useState(0);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setBgIndex((i) => (i + 1) % SCAN_BANNER_BGS.length);
+    }, 4200);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const count = profile?.photos?.length || 0;
+    if (count < 2) return undefined;
+    const timer = window.setInterval(() => {
+      setPhotoIndex((i) => (i + 1) % count);
+    }, 3500);
+    return () => window.clearInterval(timer);
+  }, [profile?.photos?.length]);
 
   useEffect(() => {
     if (!id) {
@@ -113,15 +137,6 @@ export default function ScanPage() {
       : [];
 
   const personalSocial = [];
-  if (profile.whatsappLink) {
-    personalSocial.push({
-      key: 'whatsapp',
-      href: profile.whatsappLink,
-      label: 'WhatsApp',
-      tone: 'wa',
-      icon: <IconWhatsApp />,
-    });
-  }
   if (profile.facebookLink) {
     personalSocial.push({
       key: 'facebook',
@@ -160,12 +175,19 @@ export default function ScanPage() {
     .map((p) => String(p || '').trim())
     .filter(Boolean);
   const primaryPhone = personalPhones[0] || '';
+  const whatsappHref = toWhatsAppHref(profile.whatsappLink);
+  const whatsappLabel = String(profile.whatsappLink || '').trim() || 'Whats App';
   const viberHref = toViberHref(profile.viberNumber);
+  const viberLabel = String(profile.viberNumber || '').trim() || 'Viber';
   const position = profile.position || profile.description || '';
+  const aboutMe = String(profile.aboutMe || '').trim();
   const includeShop = profile.includeShop !== false;
   const hasShopBlock = includeShop && (Boolean(profile.shopName) || branches.length > 0);
   const hasPhotos = profile.photos?.length > 0;
-  const hasContactOrbs = Boolean(primaryPhone || profile.personalEmail || viberHref);
+  const hasLinkOrbs = personalSocial.length > 0;
+  const hasInfoRows = Boolean(
+    primaryPhone || whatsappHref || viberHref || profile.personalEmail
+  );
 
   return (
     <div className="scan-v2">
@@ -186,90 +208,134 @@ export default function ScanPage() {
         </header>
 
         <article className="scan-v2-card">
-          <div className="scan-v2-avatar-wrap">
-            {profile.avatarUrl ? (
-              <img className="scan-v2-avatar" src={assetUrl(profile.avatarUrl)} alt={profile.name} />
-            ) : (
-              <div className="scan-v2-avatar fallback" aria-hidden="true">
-                <IconUser />
-              </div>
-            )}
-          </div>
-
-          <div className="scan-v2-identity">
-            <h1>{profile.name}</h1>
-            {position ? <p className="scan-v2-role">{position}</p> : null}
-            {profile.personalLocation ? (
-              <p className="scan-v2-location">
-                <IconMap />
-                <span>{profile.personalLocation}</span>
-              </p>
-            ) : null}
-            <p className="scan-v2-tagline">Proudly serving with 29 Jewellery</p>
-          </div>
-
-          {hasContactOrbs ? (
-            <div className="scan-v2-orbs">
-              {primaryPhone ? (
-                <a className="scan-v2-orb" href={`sms:${primaryPhone}`}>
-                  <span className="orb-icon">
-                    <IconSms />
-                  </span>
-                  <small>Text</small>
-                </a>
-              ) : null}
-              {primaryPhone ? (
-                <a className="scan-v2-orb" href={`tel:${primaryPhone}`}>
-                  <span className="orb-icon">
-                    <IconPhone />
-                  </span>
-                  <small>Call</small>
-                </a>
-              ) : null}
-              {profile.personalEmail ? (
-                <a className="scan-v2-orb" href={`mailto:${profile.personalEmail}`}>
-                  <span className="orb-icon">
-                    <IconMail />
-                  </span>
-                  <small>Email</small>
-                </a>
-              ) : null}
-              {viberHref ? (
-                <a className="scan-v2-orb" href={viberHref}>
-                  <span className="orb-icon">
-                    <IconViber />
-                  </span>
-                  <small>Viber</small>
-                </a>
-              ) : null}
-            </div>
-          ) : null}
-
-          {personalSocial.length > 0 && (
-            <div className="scan-v2-social">
-              {personalSocial.map((tile) => (
-                <a
-                  key={tile.key}
-                  className={`scan-v2-social-btn ${tile.tone}`}
-                  href={tile.href}
-                  target="_blank"
-                  rel="noreferrer"
-                  aria-label={tile.label}
-                >
-                  {tile.icon}
-                </a>
+          <div className="scan-v2-banner">
+            <div className="scan-v2-banner-slides" aria-hidden="true">
+              {SCAN_BANNER_BGS.map((src, i) => (
+                <img
+                  key={src}
+                  className={`scan-v2-banner-slide ${i === bgIndex ? 'is-active' : ''}`}
+                  src={src}
+                  alt=""
+                />
               ))}
             </div>
-          )}
-
-          {hasPhotos ? (
-            <div className="scan-v2-grid scan-v2-grid-simple">
-              <a className="scan-v2-tile" href="#photos">
-                <IconUser />
-                <span>Products</span>
-              </a>
+            <div className="scan-v2-banner-shade" aria-hidden="true" />
+            <div className="scan-v2-banner-dots" aria-hidden="true">
+              {SCAN_BANNER_BGS.map((src, i) => (
+                <span key={src} className={i === bgIndex ? 'is-active' : ''} />
+              ))}
             </div>
-          ) : null}
+            <div className="scan-v2-banner-row">
+              <div className="scan-v2-avatar-wrap">
+                {profile.avatarUrl ? (
+                  <img
+                    className="scan-v2-avatar"
+                    src={assetUrl(profile.avatarUrl)}
+                    alt={profile.name}
+                  />
+                ) : (
+                  <div className="scan-v2-avatar fallback" aria-hidden="true">
+                    <IconUser />
+                  </div>
+                )}
+              </div>
+              <div className="scan-v2-banner-copy">
+                <h1>{profile.name}</h1>
+                {position ? <p className="scan-v2-role">{position}</p> : null}
+                <p className="scan-v2-tagline">Proudly serving with 29 Jewellery</p>
+                {profile.personalLocation ? (
+                  <p className="scan-v2-location">
+                    <IconMap />
+                    <span>{profile.personalLocation}</span>
+                  </p>
+                ) : null}
+              </div>
+            </div>
+          </div>
+
+          <div className="scan-v2-body">
+            {aboutMe ? (
+              <div className="scan-v2-about">
+                <p className="scan-v2-about-label">About me</p>
+                <p className="scan-v2-about-text">{aboutMe}</p>
+              </div>
+            ) : null}
+
+            {hasLinkOrbs ? (
+              <div className="scan-v2-orbs">
+                {personalSocial.map((tile) => (
+                  <a
+                    key={tile.key}
+                    className={`scan-v2-orb ${tile.tone}`}
+                    href={tile.href}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <span className="orb-icon">{tile.icon}</span>
+                    <span className="orb-label">{tile.label}</span>
+                  </a>
+                ))}
+              </div>
+            ) : null}
+
+            {profile.id ? (
+              <div className="scan-v2-contact-actions">
+                {primaryPhone ? (
+                  <a className="scan-v2-cta call" href={`tel:${primaryPhone}`}>
+                    <IconPhone />
+                    <span>Call</span>
+                  </a>
+                ) : null}
+                <a
+                  className="scan-v2-cta save"
+                  href={`/api/scan/${encodeURIComponent(profile.id)}/vcard`}
+                >
+                  <IconUser />
+                  <span>Save Contact</span>
+                </a>
+              </div>
+            ) : null}
+
+            {hasInfoRows ? (
+              <div className="scan-v2-info-rows">
+                {primaryPhone ? (
+                  <a className="scan-v2-info-row" href={`tel:${primaryPhone}`}>
+                    <IconPhone />
+                    <span>{primaryPhone}</span>
+                  </a>
+                ) : null}
+                {whatsappHref ? (
+                  <a
+                    className="scan-v2-info-row wa"
+                    href={whatsappHref}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <IconWhatsApp />
+                    <span>{whatsappLabel}</span>
+                  </a>
+                ) : null}
+                {viberHref ? (
+                  <a
+                    className="scan-v2-info-row vb"
+                    href={viberHref}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <IconViber />
+                    <span>{viberLabel}</span>
+                  </a>
+                ) : null}
+                {profile.personalEmail ? (
+                  <a className="scan-v2-info-row" href={`mailto:${profile.personalEmail}`}>
+                    <IconMail />
+                    <span>{profile.personalEmail}</span>
+                  </a>
+                ) : null}
+              </div>
+            ) : null}
+
+          </div>
         </article>
 
         {hasShopBlock && (
@@ -314,11 +380,6 @@ export default function ScanPage() {
                 <article className="scan-v2-branch" key={`${title}-${i}`}>
                   <h3>{title}</h3>
                   {shopLabel && place && place !== area ? <p>{place}</p> : null}
-                  {branchPhones.map((phone) => (
-                    <a className="scan-v2-inline-call" href={`tel:${phone}`} key={phone}>
-                      <IconPhone /> {phone}
-                    </a>
-                  ))}
                   <LocationMap
                     latitude={branch.latitude}
                     longitude={branch.longitude}
@@ -326,24 +387,54 @@ export default function ScanPage() {
                     locationName={place}
                     googleMapLink={branch.googleMapLink || mapUrl}
                   />
+                  {branchPhones.length ? (
+                    <div className="scan-v2-branch-actions">
+                      {branchPhones.map((phone) => (
+                        <a className="scan-v2-call-btn" href={`tel:${phone}`} key={phone}>
+                          <IconPhone /> Call {phone}
+                        </a>
+                      ))}
+                    </div>
+                  ) : null}
                 </article>
               );
             })}
           </section>
         )}
 
-        {hasPhotos && (
+        {hasPhotos ? (
           <section className="scan-v2-panel" id="photos">
             <div className="scan-v2-panel-head">
               <h2>Best-selling products</h2>
             </div>
-            <div className="scan-v2-photos">
-              {profile.photos.map((p) => (
-                <img key={p.id} src={assetUrl(p.url)} alt={p.originalName || 'Best seller'} />
-              ))}
+            <div className="scan-v2-photo-carousel">
+              <div className="scan-v2-photo-slides">
+                {profile.photos.map((p, i) => (
+                  <img
+                    key={p.id}
+                    className={`scan-v2-photo-slide ${i === photoIndex ? 'is-active' : ''}`}
+                    src={assetUrl(p.url)}
+                    alt={p.originalName || 'Best seller'}
+                    loading={i === 0 ? 'eager' : 'lazy'}
+                  />
+                ))}
+              </div>
+              {profile.photos.length > 1 ? (
+                <div className="scan-v2-photo-dots" aria-hidden="true">
+                  {profile.photos.map((p, i) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      className={i === photoIndex ? 'is-active' : ''}
+                      onClick={() => setPhotoIndex(i)}
+                      aria-label={`Show photo ${i + 1}`}
+                    />
+                  ))}
+                </div>
+              ) : null}
             </div>
           </section>
-        )}
+        ) : null}
 
         <footer className="scan-v2-foot">29 Jewellery QR System</footer>
       </div>

@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getProfiles, deleteProfile, setProfileActive } from '../api';
 import BrandedQr from '../components/BrandedQr';
@@ -7,7 +7,6 @@ import { useI18n } from '../I18nContext';
 import {
   IconEdit,
   IconExternal,
-  IconMore,
   IconPlus,
   IconSearch,
   IconTrash,
@@ -68,7 +67,6 @@ export default function SavedPage() {
   const [typeFilter, setTypeFilter] = useState('all');
   const [shopFilter, setShopFilter] = useState('all');
   const [sortBy, setSortBy] = useState('newest');
-  const [menuId, setMenuId] = useState(null);
 
   async function load() {
     try {
@@ -84,14 +82,6 @@ export default function SavedPage() {
 
   useEffect(() => {
     load();
-  }, []);
-
-  useEffect(() => {
-    function close() {
-      setMenuId(null);
-    }
-    window.addEventListener('click', close);
-    return () => window.removeEventListener('click', close);
   }, []);
 
   const filtered = useMemo(() => {
@@ -143,7 +133,6 @@ export default function SavedPage() {
     try {
       await deleteProfile(id);
       setProfiles((prev) => prev.filter((p) => p.id !== id));
-      setMenuId(null);
     } catch (err) {
       alert(err.message);
     }
@@ -153,7 +142,6 @@ export default function SavedPage() {
     try {
       const updated = await setProfileActive(p.id, !p.active);
       setProfiles((prev) => prev.map((row) => (row.id === p.id ? updated : row)));
-      setMenuId(null);
     } catch (err) {
       alert(err.message);
     }
@@ -261,7 +249,6 @@ export default function SavedPage() {
                 {filtered.map((p) => {
                   const type = profileType(p);
                   const scanUrl = `${publicBase}/scan/${p.id}`;
-                  const open = menuId === p.id;
                   const isActive = p.active !== false;
 
                   return (
@@ -304,39 +291,50 @@ export default function SavedPage() {
                       </td>
                       <td>{formatDate(p.createdAt)}</td>
                       <td>
-                        <div className="qr-actions table-actions">
-                          <Link to={`/record/${p.id}`} className="btn btn-detail">
+                        <div className="registry-actions" role="group" aria-label="Record actions">
+                          <Link
+                            to={`/design/${p.id}`}
+                            className="registry-action-btn primary"
+                            title="QR Design"
+                          >
                             Design
                           </Link>
-                          <div className="more-wrap">
-                            <button
-                              type="button"
-                              className="btn-more"
-                              aria-label="More actions"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setMenuId(open ? null : p.id);
-                              }}
-                            >
-                              <IconMore />
-                            </button>
-                            {open && (
-                              <div className="more-menu" onClick={(e) => e.stopPropagation()}>
-                                <Link to={`/edit/${p.id}`}>
-                                  <IconEdit /> Edit info / design
-                                </Link>
-                                <a href={scanUrl} target="_blank" rel="noreferrer">
-                                  <IconExternal /> Open scan
-                                </a>
-                                <button type="button" onClick={() => handleToggleActive(p)}>
-                                  {isActive ? 'Deactivate QR' : 'Activate QR'}
-                                </button>
-                                <button type="button" onClick={() => handleDelete(p.id, p.name)}>
-                                  <IconTrash /> Delete
-                                </button>
-                              </div>
-                            )}
-                          </div>
+                          <Link
+                            to={`/edit/${p.id}`}
+                            className="registry-action-icon"
+                            title="Edit info"
+                            aria-label="Edit info"
+                          >
+                            <IconEdit />
+                          </Link>
+                          <a
+                            href={scanUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="registry-action-icon"
+                            title="Open scan"
+                            aria-label="Open scan"
+                          >
+                            <IconExternal />
+                          </a>
+                          <button
+                            type="button"
+                            className={`registry-action-icon ${isActive ? '' : 'is-off'}`}
+                            title={isActive ? 'Deactivate QR' : 'Activate QR'}
+                            aria-label={isActive ? 'Deactivate QR' : 'Activate QR'}
+                            onClick={() => handleToggleActive(p)}
+                          >
+                            {isActive ? 'On' : 'Off'}
+                          </button>
+                          <button
+                            type="button"
+                            className="registry-action-icon danger"
+                            title="Delete"
+                            aria-label="Delete"
+                            onClick={() => handleDelete(p.id, p.name)}
+                          >
+                            <IconTrash />
+                          </button>
                         </div>
                       </td>
                     </tr>

@@ -2,15 +2,13 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { createProfile, getProfile, updateProfile } from '../api';
 import BranchFields, { emptyBranch, normalizeBranchPhones } from '../components/BranchFields';
-import BrandedQr, { QR_FRAMES, downloadBrandedQrPng } from '../components/BrandedQr';
 import {
-  IconDownload,
-  IconExternal,
   IconFacebook,
   IconIdCard,
   IconMail,
   IconMap,
   IconPhone,
+  IconPhoto,
   IconPlus,
   IconSave,
   IconStore,
@@ -20,11 +18,8 @@ import {
   IconWhatsApp,
   IconYouTube,
 } from '../components/Icons';
-import usePublicBase from '../hooks/usePublicBase';
 import { isStaff } from '../auth';
 import { POSITION_OPTIONS } from '../constants/positions';
-import { SHOP_NOS } from '../constants/shops';
-
 function parseShopName(full) {
   const raw = String(full || '').trim();
   const match = raw.match(/^(.*?)(?:\s*(?:Shop|No\.?)\s*(\d+))\s*$/i);
@@ -54,6 +49,7 @@ function normalizePersonalPhones(p) {
 const empty = {
   name: '',
   position: '',
+  aboutMe: '',
   personalPhones: [''],
   personalEmail: '',
   personalLocation: '',
@@ -110,8 +106,6 @@ export default function GeneratePage({ forcedId = null, staffMode = false }) {
   const isEdit = Boolean(id);
   const staffView = staffMode || isStaff();
   const navigate = useNavigate();
-  const { publicBase, lanUrl, saveBaseUrl } = usePublicBase();
-  const isPublicLink = /^https:\/\//i.test(publicBase);
 
   const [form, setForm] = useState(empty);
   const [existingPhotos, setExistingPhotos] = useState([]);
@@ -151,6 +145,7 @@ export default function GeneratePage({ forcedId = null, staffMode = false }) {
         setForm({
           name: p.name || '',
           position: p.position || p.description || '',
+          aboutMe: p.aboutMe || '',
           personalPhones: normalizePersonalPhones(p),
           personalEmail: p.personalEmail || '',
           personalLocation: p.personalLocation || '',
@@ -233,12 +228,7 @@ export default function GeneratePage({ forcedId = null, staffMode = false }) {
     setRemoveAvatar(true);
   }
 
-  const scanUrl = savedId ? `${publicBase}/scan/${savedId}` : '';
   const logoSrc = avatarPreview || (!removeAvatar ? avatarUrl : '');
-
-  function downloadQr() {
-    downloadBrandedQrPng('preview-qr', `${form.name || 'qr'}-qr.png`);
-  }
 
   async function saveProfile() {
     if (!form.name.trim()) {
@@ -257,6 +247,7 @@ export default function GeneratePage({ forcedId = null, staffMode = false }) {
       fd.append('name', form.name.trim());
       fd.append('position', form.position.trim());
       fd.append('description', form.position.trim());
+      fd.append('aboutMe', form.aboutMe.trim());
       fd.append('department', '');
       fd.append('personalPhone', phones[0] || '');
       fd.append('personalPhones', JSON.stringify(phones));
@@ -264,7 +255,11 @@ export default function GeneratePage({ forcedId = null, staffMode = false }) {
       fd.append('personalLocation', form.personalLocation.trim());
       fd.append('viberNumber', form.viberNumber.trim());
       fd.append('includeShop', form.includeShop ? 'true' : 'false');
-      fd.append('shopName', formatShopName(form.shopName, form.shopNo));
+      const primaryShopNo =
+        form.branches.find((b) => String(b.shopNo || '').trim())?.shopNo ||
+        form.shopNo ||
+        '';
+      fd.append('shopName', formatShopName(form.shopName, primaryShopNo));
       fd.append('whatsappLink', form.whatsappLink.trim());
       fd.append('facebookLink', form.facebookLink.trim());
       fd.append('tiktokLink', form.tiktokLink.trim());
@@ -330,24 +325,21 @@ export default function GeneratePage({ forcedId = null, staffMode = false }) {
     }
   }
 
+  function goAfterSave(saved) {
+    const nextId = saved?.id || savedId || id;
+    if (!nextId) return;
+    navigate(`/design/${nextId}`);
+  }
+
   async function handleGenerateQr(e) {
     e?.preventDefault?.();
     const saved = await saveProfile();
-    if (saved?.id) {
-      requestAnimationFrame(() => {
-        document.querySelector('.generate-side')?.scrollIntoView({
-          behavior: 'smooth',
-          block: 'start',
-        });
-      });
-    }
+    if (saved?.id) goAfterSave(saved);
   }
 
   async function handleSaveQrToList() {
     const saved = await saveProfile();
-    if (saved?.id) {
-      navigate(staffView ? '/my-qr' : `/record/${saved.id || savedId || id}`);
-    }
+    if (saved?.id) goAfterSave(saved);
   }
 
   if (loading) return <div className="loading">Loading…</div>;
@@ -364,8 +356,8 @@ export default function GeneratePage({ forcedId = null, staffMode = false }) {
         </h2>
         <p>
           {staffView
-            ? 'Update your details and customize your QR look.'
-            : 'Enter Users and shop details to generate a scan profile.'}
+            ? 'Update your details, then continue to QR Design.'
+            : 'Enter Users and shop details, then continue to QR Design.'}
         </p>
       </div>
       <header className="page-toolbar">
@@ -375,32 +367,21 @@ export default function GeneratePage({ forcedId = null, staffMode = false }) {
           </h1>
           <p className="page-desc">
             {staffView
-              ? 'Change photo, colors, and contact info for your QR card.'
-              : 'Complete the form, then save to issue the QR.'}
+              ? 'Update contact info, then save to open QR Design.'
+              : 'Complete the form, then save to open QR Design.'}
           </p>
-        </div>
-        <div className="toolbar-actions">
-          <button
-            type="button"
-            className="btn btn-primary"
-            disabled={saving}
-            onClick={handleSaveQrToList}
-          >
-            <IconSave />
-            {saving ? 'Saving…' : 'Save QR'}
-          </button>
         </div>
       </header>
 
       <form
         id="generate-form"
-        className={`generate-layout${savedId ? '' : ' no-preview'}`}
+        className="generate-layout generate-split"
         onSubmit={handleGenerateQr}
       >
       {error && <div className="error-banner generate-error">{error}</div>}
 
-      <div className="generate-main">
-        <section className="step-card">
+      <div className="generate-main generate-split-cols">
+        <section className="step-card generate-col">
           <h2 className="step-title">
             <span className="section-logo personal">
               <IconIdCard />
@@ -410,36 +391,38 @@ export default function GeneratePage({ forcedId = null, staffMode = false }) {
           <div className="form-grid">
             <div className="field full-span executive-profile-field">
               <label htmlFor="avatar">Profile photo</label>
-              <p className="field-hint">Upload or change the profile photo shown on the scan card.</p>
-              <div className="file-pick">
-                <input
-                  id="avatar"
-                  className="file-input-hidden"
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0] || null;
-                    setAvatarFile(file);
-                    setRemoveAvatar(false);
-                  }}
-                />
-                <label htmlFor="avatar" className="file-pick-btn">
-                  {logoSrc ? 'Change photo' : 'Choose photo'}
-                </label>
-                {avatarFile?.name || (!removeAvatar && avatarUrl) ? (
-                  <span className="file-pick-name">
-                    {avatarFile?.name || 'Photo selected'}
-                  </span>
+              <div className="avatar-photo-row">
+                {logoSrc ? (
+                  <div className="avatar-preview-wrap">
+                    <img className="avatar-preview" src={logoSrc} alt="Profile" />
+                    <button
+                      type="button"
+                      className="avatar-remove-btn"
+                      onClick={clearAvatar}
+                      aria-label="Remove photo"
+                      title="Remove photo"
+                    >
+                      <IconTrash />
+                    </button>
+                  </div>
                 ) : null}
-              </div>
-              {logoSrc && (
-                <div className="avatar-preview-row">
-                  <img className="avatar-preview" src={logoSrc} alt="Executive profile" />
-                  <button type="button" className="btn btn-danger" onClick={clearAvatar}>
-                    Remove photo
-                  </button>
+                <div className="file-pick">
+                  <input
+                    id="avatar"
+                    className="file-input-hidden"
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0] || null;
+                      setAvatarFile(file);
+                      setRemoveAvatar(false);
+                    }}
+                  />
+                  <label htmlFor="avatar" className="file-pick-btn">
+                    {logoSrc ? 'Change photo' : 'Choose photo'}
+                  </label>
                 </div>
-              )}
+              </div>
             </div>
             <div className="field">
               <label htmlFor="name">Name</label>
@@ -500,6 +483,16 @@ export default function GeneratePage({ forcedId = null, staffMode = false }) {
                 value={form.personalLocation}
                 placeholder=""
                 onChange={(e) => setField('personalLocation', e.target.value)}
+              />
+            </div>
+            <div className="field full-span">
+              <label htmlFor="aboutMe">About me</label>
+              <textarea
+                id="aboutMe"
+                rows={3}
+                value={form.aboutMe}
+                placeholder="Short intro shown on the scan card"
+                onChange={(e) => setField('aboutMe', e.target.value)}
               />
             </div>
             <div className="field field-phones full-span">
@@ -578,7 +571,7 @@ export default function GeneratePage({ forcedId = null, staffMode = false }) {
             </div>
             <div className="field">
               <label htmlFor="whatsapp">
-                <IconWhatsApp /> WhatsApp link
+                <IconWhatsApp /> Whats App
               </label>
               <input
                 id="whatsapp"
@@ -623,7 +616,7 @@ export default function GeneratePage({ forcedId = null, staffMode = false }) {
           </div>
         </section>
 
-        <section className="step-card">
+        <section className="step-card generate-col">
           <div className="step-title-row">
             <h2 className="step-title">
               <img
@@ -631,7 +624,7 @@ export default function GeneratePage({ forcedId = null, staffMode = false }) {
                 src="/29-jewellery-logo.png"
                 alt=""
               />
-              Shop information
+              Shop locations
             </h2>
             <label className="section-toggle" htmlFor="includeShop">
               <input
@@ -647,38 +640,16 @@ export default function GeneratePage({ forcedId = null, staffMode = false }) {
           {form.includeShop ? (
             <>
               <div className="form-grid">
-                <div className="field shop-name-field">
+                <div className="field shop-name-field full-span">
                   <label htmlFor="shopName">
-                    <IconStore /> Shop name
+                    <IconStore /> Shop brand
                   </label>
-                  <div className="shop-name-row">
-                    <input
-                      id="shopName"
-                      value={form.shopName}
-                      onChange={(e) => setField('shopName', e.target.value)}
-                      placeholder="29 Jewellery"
-                    />
-                    <label className="shop-no-wrap" htmlFor="shopNo">
-                      <span>Shop</span>
-                      <select
-                        id="shopNo"
-                        value={form.shopNo}
-                        onChange={(e) => setField('shopNo', e.target.value)}
-                      >
-                        <option value="">—</option>
-                        {SHOP_NOS.map((n) => (
-                          <option key={n} value={n}>
-                            {n}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                  </div>
-                  {form.shopNo && (
-                    <p className="shop-name-preview">
-                      {formatShopName(form.shopName, form.shopNo)}
-                    </p>
-                  )}
+                  <input
+                    id="shopName"
+                    value={form.shopName}
+                    onChange={(e) => setField('shopName', e.target.value)}
+                    placeholder="29 Jewellery"
+                  />
                 </div>
               </div>
 
@@ -691,6 +662,7 @@ export default function GeneratePage({ forcedId = null, staffMode = false }) {
                     key={index}
                     branch={branch}
                     index={index}
+                    shopBrand={form.shopName}
                     onChange={updateBranch}
                     onRemove={removeBranch}
                     canRemove={form.branches.length > 1}
@@ -702,66 +674,87 @@ export default function GeneratePage({ forcedId = null, staffMode = false }) {
               </button>
 
               <div className="shop-products-block">
-                <h3 className="step-subtitle">Best-selling products</h3>
-                <div className="field">
-                  <input
-                    id="photos"
-                    className="file-input-hidden"
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    onChange={(e) => {
-                      const picked = Array.from(e.target.files || []);
-                      if (!picked.length) return;
-                      setNewFiles((prev) => [...prev, ...picked]);
-                      e.target.value = '';
-                    }}
-                  />
-                  {(existingPhotos.length > 0 || previews.length > 0) && (
-                    <>
-                      <p className="hint">
-                        {existingPhotos.length + previews.length} product(s)
-                      </p>
-                      <div className="photo-grid photo-grid-compact">
-                        {existingPhotos.map((p) => (
-                          <div className="photo-thumb" key={p.id}>
-                            <img
-                              src={p.url}
-                              alt={p.originalName || 'Best-selling product'}
-                            />
-                            <button type="button" onClick={() => markPhotoRemove(p.id)}>
-                              ×
-                            </button>
-                          </div>
-                        ))}
-                        {previews.map((src, i) => (
-                          <div className="photo-thumb" key={`new-${i}`}>
-                            <img src={src} alt={`Best-selling product ${i + 1}`} />
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setNewFiles((prev) => prev.filter((_, idx) => idx !== i))
-                              }
-                            >
-                              ×
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </>
-                  )}
+                <div className="products-panel-head">
+                  <div>
+                    <h3>Best-selling products</h3>
+                    <p>Shown on the scan card under shop locations</p>
+                  </div>
+                  {(existingPhotos.length > 0 || previews.length > 0) ? (
+                    <span className="products-count-pill">
+                      {existingPhotos.length + previews.length}
+                    </span>
+                  ) : null}
+                </div>
+
+                <input
+                  id="photos"
+                  className="file-input-hidden"
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={(e) => {
+                    const picked = Array.from(e.target.files || []);
+                    if (!picked.length) return;
+                    setNewFiles((prev) => [...prev, ...picked]);
+                    e.target.value = '';
+                  }}
+                />
+
+                {existingPhotos.length > 0 || previews.length > 0 ? (
+                  <div className="products-panel-body">
+                    <div className="photo-grid photo-grid-compact">
+                      {existingPhotos.map((p) => (
+                        <div className="photo-thumb" key={p.id}>
+                          <img
+                            src={p.url}
+                            alt={p.originalName || 'Best-selling product'}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => markPhotoRemove(p.id)}
+                            aria-label="Remove product"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                      {previews.map((src, i) => (
+                        <div className="photo-thumb" key={`new-${i}`}>
+                          <img src={src} alt={`Best-selling product ${i + 1}`} />
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setNewFiles((prev) => prev.filter((_, idx) => idx !== i))
+                            }
+                            aria-label="Remove product"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                      <button
+                        type="button"
+                        className="products-add-tile"
+                        onClick={() => document.getElementById('photos')?.click()}
+                      >
+                        <IconPlus />
+                        <span>Add</span>
+                      </button>
+                    </div>
+                  </div>
+                ) : (
                   <button
                     type="button"
-                    className="link-add-btn"
-                    style={{
-                      marginTop:
-                        existingPhotos.length || previews.length ? '0.55rem' : 0,
-                    }}
+                    className="products-empty-zone"
                     onClick={() => document.getElementById('photos')?.click()}
                   >
-                    + Add products
+                    <span className="products-empty-icon" aria-hidden="true">
+                      <IconPhoto />
+                    </span>
+                    <strong>Add product photos</strong>
+                    <small>JPG or PNG · multiple files OK</small>
                   </button>
-                </div>
+                )}
               </div>
             </>
           ) : (
@@ -769,116 +762,20 @@ export default function GeneratePage({ forcedId = null, staffMode = false }) {
               Shop information is off. Scan page will show personal info only.
             </p>
           )}
-
-          <div className="section-save-row">
-            <button
-              type="button"
-              className="btn btn-primary"
-              disabled={saving}
-              onClick={handleGenerateQr}
-            >
-              <IconSave />
-              {saving ? 'Saving…' : 'Save'}
-            </button>
-          </div>
         </section>
       </div>
 
-      {savedId && (
-        <aside className="generate-side">
-          <section className="step-card preview-card">
-            <h2 className="step-title">Customize & Save QR</h2>
-
-            <div className="qr-colors">
-              <div className="field">
-                <label htmlFor="qrFg">QR color</label>
-                <input
-                  id="qrFg"
-                  type="color"
-                  value={form.qrFgColor}
-                  onChange={(e) => setField('qrFgColor', e.target.value)}
-                />
-              </div>
-              <div className="field">
-                <label htmlFor="qrBg">Background</label>
-                <input
-                  id="qrBg"
-                  type="color"
-                  value={form.qrBgColor}
-                  onChange={(e) => setField('qrBgColor', e.target.value)}
-                />
-              </div>
-            </div>
-
-            <div className="field" style={{ marginTop: '0.75rem' }}>
-              <span className="field-label">QR frame</span>
-              <div className="frame-picker">
-                {QR_FRAMES.map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    className={`frame-option ${form.qrFrame === item.id ? 'is-active' : ''}`}
-                    onClick={() => setField('qrFrame', item.id)}
-                  >
-                    {item.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="qr-preview">
-              <BrandedQr
-                id="preview-qr"
-                value={scanUrl}
-                size={220}
-                fgColor={form.qrFgColor}
-                bgColor={form.qrBgColor}
-                logoUrl={logoSrc}
-                frame={form.qrFrame}
-              />
-            </div>
-
-            <p className="qr-url">{scanUrl}</p>
-            {isPublicLink ? (
-              <p className="hint">Works on any network (mobile data OK).</p>
-            ) : (
-              <p className="hint warn-hint">
-                Not a public link yet. Run the tunnel script, set PUBLIC_URL, then refresh.
-              </p>
-            )}
-            <div className="field">
-              <label htmlFor="qrBase">Phone URL base</label>
-              <div className="location-search">
-                <input
-                  id="qrBase"
-                  value={publicBase}
-                  onChange={(e) => saveBaseUrl(e.target.value)}
-                />
-                {lanUrl && (
-                  <button
-                    type="button"
-                    className="btn btn-ghost"
-                    onClick={() => saveBaseUrl(lanUrl)}
-                  >
-                    WiFi IP
-                  </button>
-                )}
-              </div>
-            </div>
-
-            <div className="preview-actions">
-              <button type="button" className="btn btn-ghost" onClick={downloadQr}>
-                <IconDownload /> Download QR
-              </button>
-              <a className="btn btn-ghost" href={scanUrl} target="_blank" rel="noreferrer">
-                <IconExternal /> Test scan page
-              </a>
-            </div>
-
-            <p className="save-note">IMPORTANT: Don&apos;t forget to test your QR</p>
-          </section>
-        </aside>
-      )}
+      <div className="section-save-row generate-split-actions">
+        <button
+          type="button"
+          className="btn btn-primary btn-compact"
+          disabled={saving}
+          onClick={handleGenerateQr}
+        >
+          <IconSave />
+          {saving ? 'Saving…' : 'Save & design'}
+        </button>
+      </div>
     </form>
     </div>
   );

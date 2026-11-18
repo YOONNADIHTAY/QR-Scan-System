@@ -66,6 +66,10 @@ const ICONS = {
     '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12.04 2.1a9.9 9.9 0 0 0-8.5 14.9L2.1 21.9l5-1.3a9.9 9.9 0 1 0 4.94-18.5zm5.78 14.1c-.24.68-1.4 1.24-1.94 1.32-.5.07-1.13.1-1.82-.11-.42-.13-.96-.31-1.66-.61-2.92-1.26-4.82-4.2-4.97-4.4-.14-.2-1.2-1.6-1.2-3.05 0-1.45.76-2.16 1.03-2.45.27-.29.59-.36.79-.36h.57c.18 0 .42-.07.66.5.24.59.82 2.02.89 2.17.07.15.12.32.02.52-.1.2-.15.32-.3.5-.15.17-.31.39-.45.52-.15.15-.3.31-.13.6.17.3.76 1.25 1.63 2.03 1.12 1 2.07 1.32 2.37 1.47.3.15.47.12.64-.07.18-.2.74-.86.94-1.16.2-.3.4-.25.67-.15.27.1 1.72.81 2.01.96.3.15.5.22.57.34.08.13.08.74-.16 1.42z"/></svg>',
   map:
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s6.5-5.2 6.5-10.2A6.5 6.5 0 0 0 5.5 10.8C5.5 15.8 12 21 12 21z"/><circle cx="12" cy="10.5" r="2.4"/></svg>',
+  user:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.2"/><path d="M5.5 19.2c1.4-3 3.7-4.5 6.5-4.5s5.1 1.5 6.5 4.5"/></svg>',
+  download:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v10"/><path d="M8.5 10.5L12 14l3.5-3.5"/><path d="M5 18h14"/></svg>',
 };
 
 function toViberHref(value) {
@@ -76,6 +80,15 @@ function toViberHref(value) {
   if (!digits) return '';
   const num = digits.startsWith('+') ? digits.slice(1) : digits;
   return `viber://chat?number=${encodeURIComponent(num)}`;
+}
+
+function toWhatsAppHref(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  if (/^https?:\/\//i.test(raw) || /^whatsapp:/i.test(raw)) return raw;
+  const digits = raw.replace(/[^\d]/g, '');
+  if (!digits) return '';
+  return `https://wa.me/${digits}`;
 }
 
 function contactRow({ href, label, value, tone, icon, external }) {
@@ -90,14 +103,6 @@ function renderScanHtml(profile) {
     includeShop && (Boolean(profile.shopName) || branches.length > 0);
 
   const social = [];
-  if (profile.whatsappLink) {
-    social.push({
-      href: profile.whatsappLink,
-      label: 'WhatsApp',
-      tone: 'wa',
-      icon: ICONS.whatsapp,
-    });
-  }
   if (profile.facebookLink) {
     social.push({
       href: profile.facebookLink,
@@ -122,6 +127,11 @@ function renderScanHtml(profile) {
       icon: ICONS.youtube,
     });
   }
+
+  const whatsappHref = toWhatsAppHref(profile.whatsappLink);
+  const whatsappLabel = String(profile.whatsappLink || '').trim() || 'Whats App';
+  const earlyViberHref = toViberHref(profile.viberNumber);
+  const viberLabel = String(profile.viberNumber || '').trim() || 'Viber';
 
   const personalRows = [];
   const personalPhones = (
@@ -155,31 +165,6 @@ function renderScanHtml(profile) {
       })
     );
   }
-  const viberForRows = toViberHref(profile.viberNumber);
-  if (viberForRows) {
-    personalRows.push(
-      contactRow({
-        href: viberForRows,
-        label: 'Viber',
-        value: String(profile.viberNumber || '').trim(),
-        tone: 'phone',
-        icon: ICONS.viber,
-      })
-    );
-  }
-  for (const item of social) {
-    personalRows.push(
-      contactRow({
-        href: item.href,
-        label: 'Social',
-        value: item.label,
-        tone: item.tone,
-        icon: item.icon,
-        external: true,
-      })
-    );
-  }
-
   const mapMarkers = [];
   let needsMap = false;
 
@@ -211,12 +196,6 @@ function renderScanHtml(profile) {
           place: place || '',
         });
       }
-      const phoneLines = phones
-        .map(
-          (phone) =>
-            `<p class="phone"><a href="tel:${escapeHtml(phone)}">${escapeHtml(phone)}</a></p>`
-        )
-        .join('');
       const callBtns = phones
         .map(
           (phone) =>
@@ -240,7 +219,6 @@ function renderScanHtml(profile) {
         <article class="branch">
           <h3>${escapeHtml(title)}</h3>
           ${addressLine}
-          ${phoneLines}
           ${mapBlock}
           <div class="actions">
             ${openUrl ? `<a class="btn primary" href="${escapeHtml(openUrl)}" target="_blank" rel="noreferrer">Open in Google Maps</a>` : ''}
@@ -252,48 +230,65 @@ function renderScanHtml(profile) {
     .join('');
 
   const photos = Array.isArray(profile.photos) ? profile.photos : [];
-  const photosHtml = photos.length
-    ? `<section class="panel" id="photos"><div class="panel-head"><h2>Best-selling products</h2></div><div class="photos">${photos
-        .map(
-          (p) =>
-            `<img src="${escapeHtml(p.url)}" alt="${escapeHtml(p.originalName || 'Product')}" loading="lazy" />`
-        )
-        .join('')}</div></section>`
+  const photoCount = photos.length;
+  const photoFadeSecs = Math.max(photoCount, 1) * 3.5;
+  const photosHtml = photoCount
+    ? `<section class="panel" id="photos">
+        <div class="panel-head"><h2>Best-selling products</h2></div>
+        <div class="photo-carousel">
+          <div class="photo-slides">
+            ${photos
+              .map(
+                (p, i) =>
+                  `<img class="photo-slide" src="${escapeHtml(p.url)}" alt="${escapeHtml(p.originalName || 'Product')}" style="animation-duration:${photoFadeSecs}s;animation-delay:${(i * 3.5).toFixed(1)}s" loading="${i === 0 ? 'eager' : 'lazy'}" />`
+              )
+              .join('')}
+          </div>
+          ${
+            photoCount > 1
+              ? `<div class="photo-dots" aria-hidden="true">${photos
+                  .map(
+                    (_, i) =>
+                      `<span style="animation-duration:${photoFadeSecs}s;animation-delay:${(i * 3.5).toFixed(1)}s"></span>`
+                  )
+                  .join('')}</div>`
+              : ''
+          }
+        </div>
+      </section>`
     : '';
 
   const primaryPhone = personalPhones[0] || '';
-  const viberHref = toViberHref(profile.viberNumber);
   const position = profile.position || profile.description || '';
+  const aboutMe = String(profile.aboutMe || '').trim();
   const personalLocation = String(profile.personalLocation || '').trim();
   const locationHtml = personalLocation
     ? `<p class="location">${ICONS.map}<span>${escapeHtml(personalLocation)}</span></p>`
     : '';
-  const orbHtml = [
-    primaryPhone
-      ? `<a class="orb" href="sms:${escapeHtml(primaryPhone)}"><span class="orb-icon">${ICONS.phone}</span><small>Text</small></a>`
-      : '',
-    primaryPhone
-      ? `<a class="orb" href="tel:${escapeHtml(primaryPhone)}"><span class="orb-icon">${ICONS.phone}</span><small>Call</small></a>`
-      : '',
-    profile.personalEmail
-      ? `<a class="orb" href="mailto:${escapeHtml(profile.personalEmail)}"><span class="orb-icon">${ICONS.mail}</span><small>Email</small></a>`
-      : '',
-    viberHref
-      ? `<a class="orb" href="${escapeHtml(viberHref)}"><span class="orb-icon">${ICONS.viber}</span><small>Viber</small></a>`
-      : '',
-  ]
-    .filter(Boolean)
-    .join('');
-
-  const socialHtml = social
+  const aboutHtml = aboutMe
+    ? `<div class="about"><p class="about-label">About me</p><p class="about-text">${escapeHtml(aboutMe)}</p></div>`
+    : '';
+  const orbHtml = social
     .map(
       (item) =>
-        `<a class="${escapeHtml(item.tone)}" href="${escapeHtml(item.href)}" target="_blank" rel="noreferrer" aria-label="${escapeHtml(item.label)}">${item.icon}</a>`
+        `<a class="orb ${escapeHtml(item.tone)}" href="${escapeHtml(item.href)}" target="_blank" rel="noreferrer"><span class="orb-icon">${item.icon}</span><span class="orb-label">${escapeHtml(item.label)}</span></a>`
     )
     .join('');
 
-  const gridHtml = photos.length
-    ? `<a class="tile" href="#photos"><span class="tile-ico">◆</span><span>Products</span></a>`
+  const profileId = encodeURIComponent(String(profile.id || ''));
+  const canSaveContact = Boolean(
+    profile.id &&
+      (primaryPhone || profile.personalEmail || profile.name || profile.personalLocation)
+  );
+  const contactActionsHtml = canSaveContact
+    ? `<div class="contact-actions">
+        ${
+          primaryPhone
+            ? `<a class="cta call" href="tel:${escapeHtml(primaryPhone)}">${ICONS.phone}<span>Call</span></a>`
+            : ''
+        }
+        <a class="cta save" href="/api/scan/${profileId}/vcard">${ICONS.user}<span>Save Contact</span></a>
+      </div>`
     : '';
 
   const leafletAssets = '';
@@ -307,8 +302,8 @@ function renderScanHtml(profile) {
       function shopQuery(place) {
         var q = String(place || '').trim();
         if (!q) return '';
-        if (/29\\s*jewellery/i.test(q)) return q;
-        return '29 Jewellery ' + q + ', Yangon';
+        if (/yangon|myanmar|ရန်ကုန်/i.test(q)) return q;
+        return q + ', Yangon';
       }
 
       function embedUrl(item) {
@@ -338,14 +333,19 @@ function renderScanHtml(profile) {
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="format-detection" content="telephone=no" />
   <title>${escapeHtml(profile.name || '29 Jewellery')} · Scan</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   ${leafletAssets}
   <style>
     * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
     body {
       margin: 0;
-      font-family: "Segoe UI", system-ui, sans-serif;
+      font-family: "Plus Jakarta Sans", "Segoe UI", system-ui, sans-serif;
       color: #10233a;
       line-height: 1.45;
       min-height: 100vh;
@@ -355,44 +355,156 @@ function renderScanHtml(profile) {
         linear-gradient(180deg, #ffffff 0%, #f7fbff 55%, #eef6fc 100%);
     }
     .shell { max-width: 440px; margin: 0 auto; padding: 1rem 1rem 2.2rem; }
-    .brand { display:flex; align-items:center; gap:.65rem; color:#0a2744; margin-bottom:3.4rem; }
+    .brand { display:flex; align-items:center; gap:.65rem; color:#0a2744; margin-bottom:1rem; }
     .brand img { width:42px; height:42px; object-fit:contain; border-radius:10px; background:#fff; padding:.2rem; border:1px solid #d7e6f5; }
     .brand strong { display:block; font-size:.95rem; }
     .brand small { color:#145a96; font-size:.72rem; }
     .card {
-      position:relative; background:#fff; border-radius:22px; padding:3.4rem 1.15rem 1.25rem;
-      box-shadow: 0 14px 32px rgba(10,39,68,.1); text-align:center;
-      border:1px solid #d7e6f5;
+      position:relative; background:#fff; border-radius:20px; padding:0;
+      box-shadow: 0 10px 28px rgba(15,23,42,.08); text-align:center;
+      border:1px solid #e5e7eb; overflow:visible;
     }
-    .avatar-wrap { position:absolute; left:50%; top:0; transform:translate(-50%,-48%); }
+    .banner {
+      position:relative; overflow:visible; border-radius:22px 22px 0 0; min-height:168px;
+      padding:1rem 1.1rem 1.1rem; text-align:left; background:#111827;
+    }
+    .banner-slides { position:absolute; inset:0; border-radius:inherit; overflow:hidden; z-index:0; }
+    .banner-slide {
+      position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:center;
+      opacity:0; animation:scanBgFade 12.6s infinite;
+    }
+    .banner-slide:nth-child(1) { animation-delay:0s; }
+    .banner-slide:nth-child(2) { animation-delay:4.2s; }
+    .banner-slide:nth-child(3) { animation-delay:8.4s; }
+    @keyframes scanBgFade {
+      0% { opacity:0; }
+      6% { opacity:1; }
+      30% { opacity:1; }
+      36% { opacity:0; }
+      100% { opacity:0; }
+    }
+    .banner-shade {
+      position:absolute; inset:0; z-index:1; pointer-events:none; border-radius:inherit; overflow:hidden;
+      background:linear-gradient(100deg,rgba(15,23,42,.78) 0%,rgba(15,23,42,.5) 55%,rgba(15,23,42,.32) 100%);
+    }
+    .banner-dots { position:absolute; left:1.1rem; top:.85rem; bottom:auto; z-index:2; display:flex; gap:.35rem; }
+    .banner-dots span { width:6px; height:6px; border-radius:999px; background:rgba(255,255,255,.4); }
+    .banner-row {
+      position:relative; z-index:3; margin-top:1.6rem;
+      display:flex; align-items:flex-start; gap:.75rem; min-height:72px;
+      background:transparent; border:0; box-shadow:none; padding:0;
+    }
+    .banner-copy {
+      position:relative; z-index:2; min-width:0; flex:1;
+      display:flex; flex-direction:column; align-items:flex-start; justify-content:flex-start;
+      gap:.14rem; padding-top:.15rem; text-align:left;
+    }
+    .banner-copy h1 {
+      margin:0; font-size:1.18rem; color:#fff; letter-spacing:-.02em; line-height:1.2;
+      text-shadow:0 1px 8px rgba(0,0,0,.45);
+    }
+    .banner-copy .role {
+      margin:0; color:#e2e8f0; font-weight:700; font-size:.86rem; text-align:left;
+      text-shadow:0 1px 6px rgba(0,0,0,.4);
+    }
+    .banner-copy .location {
+      margin:.05rem 0 0; color:#f1f5f9; font-size:.8rem; font-weight:650;
+      display:inline-flex; align-items:center; justify-content:flex-start; gap:.3rem;
+      text-shadow:0 1px 6px rgba(0,0,0,.4);
+    }
+    .banner-copy .location svg { width:13px; height:13px; color:#e2e8f0; flex-shrink:0; }
+    .banner-copy .tagline {
+      margin:.05rem 0 0; color:rgba(255,255,255,.78); font-size:.72rem; text-align:left;
+      letter-spacing:.01em; line-height:1.35; text-shadow:0 1px 6px rgba(0,0,0,.4);
+    }
+    .avatar-wrap {
+      position:relative; z-index:2; width:72px; height:72px; border-radius:999px; flex-shrink:0;
+      margin-bottom:-1.6rem;
+    }
     .avatar {
-      width:108px; height:108px; border-radius:999px; object-fit:cover; display:block;
-      border:4px solid #fff; box-shadow:0 10px 28px rgba(10,39,68,.25); background:#e8eef5;
+      width:72px; height:72px; border-radius:999px; object-fit:cover; display:block;
+      border:3px solid #fff; box-shadow:0 8px 18px rgba(15,23,42,.28); background:#e8eef5;
     }
     .avatar.fallback {
-      display:grid; place-items:center; font-weight:700; color:#64748b; font-size:2rem;
+      display:grid; place-items:center; font-weight:700; color:#64748b; font-size:1.15rem; background:#f1f5f9;
     }
-    h1 { margin:0; font-size:1.45rem; color:#0a2744; letter-spacing:-.02em; }
-    .role { margin:.3rem 0 0; color:#145a96; font-weight:700; font-size:.92rem; }
+    .body {
+      position:relative; z-index:1; padding:2.1rem 1.1rem 1.2rem; text-align:center;
+      display:grid; gap:.95rem;
+    }
+    .about {
+      width:100%; text-align:left; padding:.15rem .15rem .35rem;
+      border:0; background:transparent;
+    }
+    .about-label {
+      margin:0 0 .35rem; font-size:.66rem; font-weight:800; letter-spacing:.08em;
+      text-transform:uppercase; color:#94a3b8;
+    }
+    .about-text {
+      margin:0; color:#334155; font-size:.9rem; line-height:1.55; white-space:pre-wrap;
+      font-weight:500;
+    }
     .location {
-      margin:.4rem 0 0; color:#64748b; font-size:.84rem; font-weight:600;
+      margin:0; color:#475569; font-size:.82rem; font-weight:650;
       display:inline-flex; align-items:center; justify-content:center; gap:.3rem;
     }
-    .location svg { width:14px; height:14px; color:#145a96; flex-shrink:0; }
-    .tagline { margin:.35rem 0 0; color:#64748b; font-size:.82rem; }
-    .orbs { display:flex; flex-wrap:wrap; justify-content:center; gap:.85rem 1rem; margin-top:1.15rem; }
-    .orb { display:grid; gap:.35rem; justify-items:center; text-decoration:none; color:#0a2744; }
-    .orb-icon {
-      width:58px; height:58px; border-radius:999px; display:grid; place-items:center;
-      background:linear-gradient(160deg,#0a2744,#145a96); color:#fff;
-      box-shadow:0 10px 22px rgba(10,39,68,.28);
+    .location svg { width:14px; height:14px; color:#64748b; flex-shrink:0; }
+    .tagline { margin:0; color:#94a3b8; font-size:.78rem; text-align:center; letter-spacing:.01em; }
+    .info-rows { display:grid; gap:.45rem; }
+    .info-row {
+      display:flex; align-items:center; gap:.65rem; padding:.7rem .85rem; border-radius:12px;
+      border:1px solid #e5e7eb; background:#f8fafc; color:#111827; text-decoration:none;
+      font-weight:600; font-size:.86rem; text-align:left;
     }
-    .orb-icon svg { width:22px; height:22px; display:block; }
-    .orb small { font-size:.72rem; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:#475569; }
-    .social { display:flex; justify-content:center; flex-wrap:wrap; gap:.55rem; margin-top:1rem; }
+    .info-row svg { width:16px; height:16px; color:#64748b; flex-shrink:0; }
+    .info-row.wa svg { color:#25d366; }
+    .info-row.vb svg { color:#7360f2; }
+    .orbs {
+      display:grid; grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:.35rem .45rem; margin:0; align-items:center;
+    }
+    .orb {
+      display:inline-flex; align-items:center; justify-content:flex-start; gap:.32rem;
+      min-width:0; width:100%; padding:.12rem .5rem .12rem .12rem; border-radius:999px;
+      background:transparent; border:1.25px solid #cbd5e1; box-shadow:none;
+      text-decoration:none; color:#475569; font-weight:650;
+    }
+    .orb-icon {
+      width:22px; height:22px; border-radius:999px; display:grid; place-items:center;
+      background:#64748b; color:#fff; flex-shrink:0;
+    }
+    .orb-icon svg { width:11px; height:11px; display:block; }
+    .orb-label {
+      font-size:.68rem; letter-spacing:.01em; line-height:1.1; white-space:nowrap;
+      overflow:hidden; text-overflow:ellipsis; color:inherit;
+    }
+    .orb.wa { border-color:#25d366; color:#128c7e; }
+    .orb.wa .orb-icon { background:#25d366; }
+    .orb.fb { border-color:#1877f2; color:#1877f2; }
+    .orb.fb .orb-icon { background:#1877f2; }
+    .orb.tt { border-color:#111827; color:#111827; }
+    .orb.tt .orb-icon { background:#111827; }
+    .orb.yt { border-color:#e11d48; color:#e11d48; }
+    .orb.yt .orb-icon { background:#e11d48; }
+    .orb.vb { border-color:#7360f2; color:#7360f2; }
+    .orb.vb .orb-icon { background:#7360f2; }
+    .contact-actions { display:grid; grid-template-columns:1fr 1fr; gap:.4rem; margin:0; }
+    .cta {
+      display:inline-flex; align-items:center; justify-content:center; gap:.3rem;
+      min-height:34px; padding:.4rem .65rem; border-radius:9px;
+      text-decoration:none; font-weight:700; font-size:.78rem;
+    }
+    .cta svg { width:13px; height:13px; flex-shrink:0; }
+    .cta.call { background:#dc2626; color:#fff; }
+    .cta.save { background:#111827; color:#fff; }
+    .cta.pdf {
+      width:100%; background:#fff; color:#374151;
+      border:1px solid #d1d5db; box-shadow:none; font-weight:650;
+    }
+    .social { display:flex; justify-content:center; flex-wrap:wrap; gap:.45rem; margin:0; padding-top:.15rem; }
     .social a {
-      width:40px; height:40px; border-radius:12px; display:grid; place-items:center;
-      text-decoration:none; border:1px solid #dbe7f3; background:#f5f9fd; color:#0a2744;
+      width:36px; height:36px; border-radius:10px; display:grid; place-items:center;
+      text-decoration:none; border:1px solid #e5e7eb; background:#fff; color:#111827;
     }
     .social a svg { width:16px; height:16px; }
     .social a.wa { color:#25d366; }
@@ -438,6 +550,35 @@ function renderScanHtml(profile) {
     .btn.ghost { background:#fff; color:#1e293b; border:1px solid #cbd5e1; }
     .photos { display:grid; grid-template-columns:1fr 1fr; gap:.55rem; }
     .photos img { width:100%; aspect-ratio:1; object-fit:cover; border-radius:12px; border:1px solid #e2e8f0; }
+    .photo-carousel {
+      position:relative; width:100%; aspect-ratio:4/3; border-radius:14px; overflow:hidden;
+      border:1px solid #e2e8f0; background:#0f172a;
+    }
+    .photo-slides { position:absolute; inset:0; }
+    .photo-slide {
+      position:absolute; inset:0; width:100%; height:100%; object-fit:cover;
+      opacity:0; animation-name:productFade; animation-timing-function:ease; animation-iteration-count:infinite;
+    }
+    @keyframes productFade {
+      0% { opacity:0; transform:scale(1.04); }
+      4% { opacity:1; transform:scale(1); }
+      28% { opacity:1; transform:scale(1); }
+      34% { opacity:0; transform:scale(1.02); }
+      100% { opacity:0; }
+    }
+    .photo-dots {
+      position:absolute; left:50%; bottom:.7rem; transform:translateX(-50%);
+      z-index:2; display:flex; gap:.35rem;
+    }
+    .photo-dots span {
+      width:7px; height:7px; border-radius:999px; background:rgba(255,255,255,.35);
+      animation-name:productDot; animation-timing-function:linear; animation-iteration-count:infinite;
+    }
+    @keyframes productDot {
+      0%, 3% { width:7px; background:rgba(255,255,255,.35); }
+      4%, 28% { width:18px; background:#fff; }
+      34%, 100% { width:7px; background:rgba(255,255,255,.35); }
+    }
     .foot { text-align:center; margin-top:1.1rem; color:#145a96; font-size:.72rem; font-weight:700; letter-spacing:.04em; opacity:.85; }
     @media (max-width:380px) { .grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
   </style>
@@ -450,20 +591,61 @@ function renderScanHtml(profile) {
     </header>
 
     <article class="card">
-      <div class="avatar-wrap">
+      <div class="banner">
+        <div class="banner-slides" aria-hidden="true">
+          <img class="banner-slide" src="/scan-bg/bg-1.jpg" alt="" />
+          <img class="banner-slide" src="/scan-bg/bg-2.jpg" alt="" />
+          <img class="banner-slide" src="/scan-bg/bg-3.jpg" alt="" />
+        </div>
+        <div class="banner-shade" aria-hidden="true"></div>
+        <div class="banner-row">
+          <div class="avatar-wrap">
+            ${
+              profile.avatarUrl
+                ? `<img class="avatar" src="${escapeHtml(profile.avatarUrl)}" alt="${escapeHtml(profile.name)}" />`
+                : `<div class="avatar fallback" aria-hidden="true">${escapeHtml((profile.name || '?').slice(0, 1).toUpperCase())}</div>`
+            }
+          </div>
+          <div class="banner-copy">
+            <h1>${escapeHtml(profile.name || 'Profile')}</h1>
+            ${position ? `<p class="role">${escapeHtml(position)}</p>` : ''}
+            <p class="tagline">Proudly serving with 29 Jewellery</p>
+            ${locationHtml}
+          </div>
+        </div>
+        <div class="banner-dots" aria-hidden="true"><span></span><span></span><span></span></div>
+      </div>
+      <div class="body">
+        ${aboutHtml}
+        ${orbHtml ? `<div class="orbs">${orbHtml}</div>` : ''}
+        ${contactActionsHtml}
         ${
-          profile.avatarUrl
-            ? `<img class="avatar" src="${escapeHtml(profile.avatarUrl)}" alt="${escapeHtml(profile.name)}" />`
-            : `<div class="avatar fallback" aria-hidden="true">${escapeHtml((profile.name || '?').slice(0, 1).toUpperCase())}</div>`
+          primaryPhone || whatsappHref || earlyViberHref || profile.personalEmail
+            ? `<div class="info-rows">
+                ${
+                  primaryPhone
+                    ? `<a class="info-row" href="tel:${escapeHtml(primaryPhone)}">${ICONS.phone}<span>${escapeHtml(primaryPhone)}</span></a>`
+                    : ''
+                }
+                ${
+                  whatsappHref
+                    ? `<a class="info-row wa" href="${escapeHtml(whatsappHref)}" target="_blank" rel="noreferrer">${ICONS.whatsapp}<span>${escapeHtml(whatsappLabel)}</span></a>`
+                    : ''
+                }
+                ${
+                  earlyViberHref
+                    ? `<a class="info-row vb" href="${escapeHtml(earlyViberHref)}" target="_blank" rel="noreferrer">${ICONS.viber}<span>${escapeHtml(viberLabel)}</span></a>`
+                    : ''
+                }
+                ${
+                  profile.personalEmail
+                    ? `<a class="info-row" href="mailto:${escapeHtml(profile.personalEmail)}">${ICONS.mail}<span>${escapeHtml(profile.personalEmail)}</span></a>`
+                    : ''
+                }
+              </div>`
+            : ''
         }
       </div>
-      <h1>${escapeHtml(profile.name || 'Profile')}</h1>
-      ${position ? `<p class="role">${escapeHtml(position)}</p>` : ''}
-      ${locationHtml}
-      <p class="tagline">Proudly serving with 29 Jewellery</p>
-      ${orbHtml ? `<div class="orbs">${orbHtml}</div>` : ''}
-      ${socialHtml ? `<div class="social">${socialHtml}</div>` : ''}
-      ${gridHtml ? `<div class="grid">${gridHtml}</div>` : ''}
     </article>
 
     ${

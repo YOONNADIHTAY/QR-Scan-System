@@ -51,8 +51,61 @@ function isWeakPlaceResult(hit) {
   return /^(ရန်ကုန်မြို့|Yangon)(,|\s|$)/i.test(top);
 }
 
+/** Common Yangon township aliases (EN + MY) for result filtering */
+const TOWNSHIPS = [
+  { key: 'tamwe', patterns: [/\btamwe\b/i, /\btarmwe\b/i, /တာမွေ/] },
+  { key: 'dala', patterns: [/\bdala\b/i, /ဒလ/] },
+  { key: 'twante', patterns: [/\btwante\b/i, /\btwante\b/i, /တွံတေး/] },
+  { key: 'bahan', patterns: [/\bbahan\b/i, /ဗဟန်း/] },
+  { key: 'sanchaung', patterns: [/\bsanchaung\b/i, /စမ်းချောင်း/] },
+  { key: 'kamayut', patterns: [/\bkamayut\b/i, /ကမာရွတ်/] },
+  { key: 'mayangone', patterns: [/\bmayangone\b/i, /\bmayangon\b/i, /မရမ်းကုန်း/] },
+  { key: 'thingangyun', patterns: [/\bthingangyun\b/i, /သင်္ဃန်းကျွန်း/] },
+  { key: 'yankin', patterns: [/\byankin\b/i, /ရန်ကင်း/] },
+  { key: 'mingaladon', patterns: [/\bmingaladon\b/i, /မင်္ဂလာဒုံ/] },
+  { key: 'hlaiing', patterns: [/\bhlaing\b/i, /လှိုင်/] },
+  { key: 'insein', patterns: [/\binsein\b/i, /အင်းစိန်/] },
+  { key: 'kyauktada', patterns: [/\bkyauktada\b/i, /ကျောက်တံတား/] },
+  { key: 'pabedan', patterns: [/\bpabedan\b/i, /ပန်းဘဲတန်း/] },
+  { key: 'lanmadaw', patterns: [/\blanmadaw\b/i, /လမ်းမတော်/] },
+  { key: 'botataung', patterns: [/\bbotataung\b/i, /ဗိုလ်တထောင်/] },
+  { key: 'pazundaung', patterns: [/\bpazundaung\b/i, /ပုဇွန်တောင်/] },
+  { key: 'dawbon', patterns: [/\bdawbon\b/i, /ဒေါပုံ/] },
+  { key: 'thaketa', patterns: [/\bthaketa\b/i, /သာကေတ/] },
+  { key: 'south okkalapa', patterns: [/\bsouth\s*okkalapa\b/i, /တောင်ဥက္ကလာပ/] },
+  { key: 'north okkalapa', patterns: [/\bnorth\s*okkalapa\b/i, /မြောက်ဥက္ကလာပ/] },
+];
+
+function detectTownships(text) {
+  const s = String(text || '');
+  return TOWNSHIPS.filter((t) => t.patterns.some((re) => re.test(s))).map(
+    (t) => t.key
+  );
+}
+
+function hitMatchesTownship(hit, wanted) {
+  if (!wanted.length) return true;
+  const found = detectTownships(hit?.displayName || '');
+  if (!found.length) return true; // unknown — keep as soft candidate
+  return found.some((t) => wanted.includes(t));
+}
+
+function hitConflictsTownship(hit, wanted) {
+  if (!wanted.length) return false;
+  const found = detectTownships(hit?.displayName || '');
+  if (!found.length) return false;
+  return found.every((t) => !wanted.includes(t));
+}
+
+function stripShopBrand(text) {
+  return String(text || '')
+    .replace(/\b29\s*jewellery\b/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 function geocodeCandidates(raw) {
-  const q = String(raw || '').trim();
+  const q = stripShopBrand(raw);
   if (!q) return [];
 
   const expanded = expandAbbreviations(q);
@@ -90,14 +143,26 @@ function geocodeCandidates(raw) {
     }
   }
 
+  const townships = detectTownships(q);
+  const townshipLabel = townships[0]
+    ? townships[0].replace(/\b\w/g, (c) => c.toUpperCase())
+    : '';
+
   const prioritized = [];
   for (const street of streets) {
+    if (townshipLabel) {
+      pushUnique(prioritized, `${street}, ${townshipLabel}, Yangon, Myanmar`);
+      pushUnique(prioritized, `${street}, ${townshipLabel}, Yangon`);
+    }
     pushUnique(prioritized, `${street}, Yangon, Myanmar`);
     pushUnique(prioritized, `${street}, Yangon`);
     pushUnique(prioritized, street);
   }
   for (const item of others) {
     if (!/yangon|myanmar|ရန်ကုန်/i.test(item)) {
+      if (townshipLabel && !new RegExp(townshipLabel, 'i').test(item)) {
+        pushUnique(prioritized, `${item}, ${townshipLabel}, Yangon, Myanmar`);
+      }
       pushUnique(prioritized, `${item}, Yangon, Myanmar`);
       pushUnique(prioritized, `${item}, Yangon`);
     }
@@ -106,35 +171,38 @@ function geocodeCandidates(raw) {
   return prioritized;
 }
 
-async function photonSearch(q) {
+async function photonSearch(q, { limit = 5 } = {}) {
   try {
     const url =
       `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}` +
-      `&limit=1&lang=en`;
+      `&limit=${limit}&lang=en`;
     const res = await fetch(url, {
       headers: { Accept: 'application/json' },
     });
-    if (!res.ok) return null;
+    if (!res.ok) return [];
     const data = await res.json();
-    const feature = data?.features?.[0];
-    if (!feature) return null;
-    const [lng, lat] = feature.geometry?.coordinates || [];
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-    const props = feature.properties || {};
-    const displayName = [props.name, props.city, props.state, props.country]
-      .filter(Boolean)
-      .join(', ');
-    return { lat, lng, displayName: displayName || q };
+    const features = Array.isArray(data?.features) ? data.features : [];
+    return features
+      .map((feature) => {
+        const [lng, lat] = feature.geometry?.coordinates || [];
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+        const props = feature.properties || {};
+        const displayName = [props.name, props.city, props.state, props.country]
+          .filter(Boolean)
+          .join(', ');
+        return { lat, lng, displayName: displayName || q };
+      })
+      .filter(Boolean);
   } catch {
-    return null;
+    return [];
   }
 }
 
-async function nominatimRequest(q, { countrycodes } = {}) {
+async function nominatimRequest(q, { countrycodes, limit = 5 } = {}) {
   const params = new URLSearchParams({
     format: 'jsonv2',
     q,
-    limit: '1',
+    limit: String(limit),
     addressdetails: '1',
   });
   if (countrycodes) params.set('countrycodes', countrycodes);
@@ -148,56 +216,107 @@ async function nominatimRequest(q, { countrycodes } = {}) {
         },
       }
     );
-    if (!upstream.ok) return null;
+    if (!upstream.ok) return [];
     const text = await upstream.text();
-    if (!text || text.trim().startsWith('<')) return null;
+    if (!text || text.trim().startsWith('<')) return [];
     const data = JSON.parse(text);
-    if (!Array.isArray(data) || !data[0]) return null;
-    const lat = Number(data[0].lat);
-    const lng = Number(data[0].lon);
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-    return { lat, lng, displayName: data[0].display_name || q };
+    if (!Array.isArray(data) || !data.length) return [];
+    return data
+      .map((row) => {
+        const lat = Number(row.lat);
+        const lng = Number(row.lon);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+        return { lat, lng, displayName: row.display_name || q };
+      })
+      .filter(Boolean);
   } catch {
-    return null;
+    return [];
   }
 }
 
+function pickBestHit(hits, wantedTownships) {
+  if (!hits?.length) return null;
+  const matching = hits.filter((h) => hitMatchesTownship(h, wantedTownships));
+  const pool = matching.length ? matching : hits;
+  const nonConflicting = pool.filter(
+    (h) => !hitConflictsTownship(h, wantedTownships)
+  );
+  const finalPool = nonConflicting.length ? nonConflicting : [];
+  if (!finalPool.length && wantedTownships.length) return null;
+
+  for (const hit of finalPool.length ? finalPool : pool) {
+    if (!isWeakPlaceResult(hit)) return hit;
+  }
+  return (finalPool.length ? finalPool : pool)[0] || null;
+}
+
 async function geocodeQuery(q) {
+  const wantedTownships = detectTownships(q);
   const candidates = geocodeCandidates(q).slice(0, 10);
   let weakHit = null;
+  let softHit = null;
 
-  // Photon first — faster and less rate-limited
+  // Prefer Nominatim when a township is named — Photon often mismatches Myanmar roads
+  if (wantedTownships.length) {
+    for (let i = 0; i < Math.min(candidates.length, 6); i += 1) {
+      if (i > 0) await sleep(700);
+      const hits = await nominatimRequest(candidates[i], {
+        countrycodes: 'mm',
+        limit: 5,
+      });
+      const best = pickBestHit(hits, wantedTownships);
+      if (!best) continue;
+      if (isWeakPlaceResult(best)) {
+        if (!weakHit) weakHit = best;
+        continue;
+      }
+      if (hitConflictsTownship(best, wantedTownships)) continue;
+      return best;
+    }
+  }
+
   for (const candidate of candidates) {
-    const hit = await photonSearch(candidate);
-    if (!hit) continue;
-    if (isWeakPlaceResult(hit)) {
-      if (!weakHit) weakHit = hit;
+    const hits = await photonSearch(candidate, { limit: 5 });
+    const best = pickBestHit(hits, wantedTownships);
+    if (!best) continue;
+    if (hitConflictsTownship(best, wantedTownships)) continue;
+    if (isWeakPlaceResult(best)) {
+      if (!weakHit) weakHit = best;
       continue;
     }
-    return hit;
-  }
-
-  for (let i = 0; i < Math.min(candidates.length, 5); i += 1) {
-    if (i > 0) await sleep(700);
-    const hit = await nominatimRequest(candidates[i], { countrycodes: 'mm' });
-    if (!hit) continue;
-    if (isWeakPlaceResult(hit)) {
-      if (!weakHit) weakHit = hit;
+    if (wantedTownships.length && !hitMatchesTownship(best, wantedTownships)) {
+      if (!softHit) softHit = best;
       continue;
     }
-    return hit;
+    return best;
   }
 
-  return (
-    weakHit || {
-      lat: 16.8409,
-      lng: 96.1735,
-      displayName: 'Yangon, Myanmar',
+  if (!wantedTownships.length) {
+    for (let i = 0; i < Math.min(candidates.length, 5); i += 1) {
+      if (i > 0) await sleep(700);
+      const hits = await nominatimRequest(candidates[i], {
+        countrycodes: 'mm',
+        limit: 5,
+      });
+      const best = pickBestHit(hits, wantedTownships);
+      if (!best) continue;
+      if (isWeakPlaceResult(best)) {
+        if (!weakHit) weakHit = best;
+        continue;
+      }
+      return best;
     }
-  );
+  }
+
+  // No reliable pin — return null so the UI can fall back to Google text search
+  // instead of dropping a wrong pin (e.g. Dala for a Tamwe street).
+  if (wantedTownships.length) return null;
+
+  return softHit || weakHit || null;
 }
 
 module.exports = {
   geocodeCandidates,
   geocodeQuery,
+  detectTownships,
 };

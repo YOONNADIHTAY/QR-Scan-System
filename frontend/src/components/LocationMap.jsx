@@ -12,8 +12,10 @@ import {
 function shopSearchQuery(place) {
   const q = String(place || '').trim();
   if (!q) return '';
-  if (/29\s*jewellery/i.test(q)) return q;
-  return `29 Jewellery ${q}, Yangon`;
+  // Keep street/township text as-is for Google search. Prefixing the shop brand
+  // can pull the map to another branch / wrong township.
+  if (/yangon|myanmar|ရန်ကုန်/i.test(q)) return q;
+  return `${q}, Yangon`;
 }
 
 export default function LocationMap({
