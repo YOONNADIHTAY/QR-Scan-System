@@ -149,8 +149,13 @@ function AppShell() {
           <span />
         </button>
         <div className="mobile-topbar-brand">
-          <img src="/29-jewellery-logo.png" alt="" />
-          <strong>29 Jewellery</strong>
+          <span className="brand-mark-wrap is-compact" aria-hidden="true">
+            <img src="/29-jewellery-logo.png" alt="" />
+          </span>
+          <div className="brand-text">
+            <strong>29 Jewellery</strong>
+            <small>{t('brandSub')}</small>
+          </div>
         </div>
         <span className="mobile-topbar-spacer" aria-hidden="true" />
       </header>
@@ -164,14 +169,18 @@ function AppShell() {
 
       <aside className="dash-sidebar" id="app-sidebar">
         <div className="brand">
-          <img
-            className="brand-mark"
-            src="/29-jewellery-logo.png"
-            alt="29 Jewellery"
-          />
-          <div className="brand-text">
-            <strong>29 Jewellery</strong>
-            <small>{t('brandSub')}</small>
+          <div className="brand-lockup">
+            <span className="brand-mark-wrap" aria-hidden="true">
+              <img
+                className="brand-mark"
+                src="/29-jewellery-logo.png"
+                alt=""
+              />
+            </span>
+            <div className="brand-text">
+              <strong>29 Jewellery</strong>
+              <small>{t('brandSub')}</small>
+            </div>
           </div>
           <button
             type="button"

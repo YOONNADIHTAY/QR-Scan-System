@@ -20,6 +20,7 @@ import {
 } from '../auth';
 import usePublicBase from '../hooks/usePublicBase';
 import { useI18n } from '../I18nContext';
+import { useTheme } from '../ThemeContext';
 import { IconPlus, IconQrCodes, IconStats, IconUser, IconShield } from '../components/Icons';
 
 function PageFrame({ title, desc, actions, children }) {
@@ -710,6 +711,7 @@ export function PlansPage() {
 
 export function SettingsPage() {
   const { t, lang, setLang } = useI18n();
+  const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
   const profile = getAuthProfile();
   const user = profile?.email || getAuthUser() || '—';
@@ -788,6 +790,40 @@ export function SettingsPage() {
                       onClick={() => setLang('my')}
                     >
                       {t('myanmar')}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article className="settings-section">
+            <header className="settings-section-head">
+              <h3>{t('appearance')}</h3>
+            </header>
+            <div className="settings-rows">
+              <div className="settings-row">
+                <span className="settings-label">{t('appearance')}</span>
+                <div className="settings-value">
+                  <p className="muted-note lang-hint">{t('appearanceHint')}</p>
+                  <div
+                    className="lang-switch theme-switch"
+                    role="group"
+                    aria-label={t('appearance')}
+                  >
+                    <button
+                      type="button"
+                      className={theme === 'light' ? 'is-active' : ''}
+                      onClick={() => setTheme('light')}
+                    >
+                      {t('themeLight')}
+                    </button>
+                    <button
+                      type="button"
+                      className={theme === 'dark' ? 'is-active' : ''}
+                      onClick={() => setTheme('dark')}
+                    >
+                      {t('themeDark')}
                     </button>
                   </div>
                 </div>
