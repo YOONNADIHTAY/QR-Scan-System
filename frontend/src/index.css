@@ -870,10 +870,11 @@ select {
 }
 
 .dash-overview-panel {
-  padding: 1rem;
-  border-radius: 16px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  padding: 1.05rem 1.1rem 1rem;
+  border-radius: 18px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
   min-width: 0;
 }
 
@@ -882,24 +883,27 @@ select {
   align-items: baseline;
   justify-content: space-between;
   gap: 0.75rem;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.55rem;
 }
 
 .dash-overview-panel-head h3 {
   margin: 0;
-  font-size: 0.98rem;
-  color: #0f172a;
+  font-size: 1rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  color: var(--heading);
 }
 
 .dash-overview-panel-head span {
-  font-size: 0.75rem;
-  color: #64748b;
+  font-size: 0.74rem;
+  color: var(--text-muted);
   text-align: right;
 }
 
 .dash-overview-chart-wrap {
   width: 100%;
   overflow: hidden;
+  margin-top: 0.15rem;
 }
 
 .dash-overview-chart {
@@ -909,26 +913,42 @@ select {
 }
 
 .dash-chart-grid {
-  stroke: #e2e8f0;
+  stroke: #cbd5e1;
   stroke-width: 1;
+  stroke-dasharray: 4 6;
+  opacity: 0.7;
 }
 
 .dash-chart-axis {
   fill: #94a3b8;
   font-size: 11px;
+  font-weight: 500;
+}
+
+.dash-chart-area {
+  stroke: none;
 }
 
 .dash-chart-line {
-  stroke: #2563eb;
-  stroke-width: 2.4;
+  stroke: #4a6cf7;
+  stroke-width: 2.6;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
 .dash-chart-dot {
-  fill: #2563eb;
+  fill: #4a6cf7;
   stroke: #fff;
   stroke-width: 2;
+}
+
+html[data-theme='dark'] .dash-chart-grid {
+  stroke: #475569;
+  opacity: 0.55;
+}
+
+html[data-theme='dark'] .dash-chart-line {
+  stroke: #60a5fa;
 }
 
 .dash-activity-list {
@@ -7050,6 +7070,23 @@ html[data-theme='dark'] .scan-v2 {
 }
 
 @media print {
+  @page {
+    size: A4 portrait;
+    margin: 8mm;
+  }
+
+  html,
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+    height: auto !important;
+    overflow: visible !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Hide everything visually, but do NOT display:none ancestors of the badge */
   body * {
     visibility: hidden !important;
   }
@@ -7059,29 +7096,11 @@ html[data-theme='dark'] .scan-v2 {
     visibility: visible !important;
   }
 
-  .id-badge {
-    position: absolute;
-    left: 50%;
-    top: 12mm;
-    transform: translateX(-50%);
-    box-shadow: none !important;
-    border: 1px solid #cbd5e1 !important;
-  }
-
-  .id-badge-layout--portrait {
-    width: 70mm !important;
-  }
-  .id-badge-layout--landscape {
-    width: 140mm !important;
-  }
-  .id-badge-layout--strip {
-    width: 150mm !important;
-  }
-  .id-badge-layout--split {
-    width: 85mm !important;
-  }
-
+  /* Hide chrome that is NOT an ancestor of the badge */
   .dash-sidebar,
+  .mobile-topbar,
+  .mobile-nav-scrim,
+  .install-banner,
   .page-toolbar,
   .id-card-toolbar,
   .welcome-banner,
@@ -7089,7 +7108,66 @@ html[data-theme='dark'] .scan-v2 {
   .id-card-meta,
   .toolbar-actions,
   .qr-design-panel-head,
-  .id-badge-design-picker {
+  .id-badge-design-picker,
+  .sidebar-tip,
+  .sidebar-foot {
     display: none !important;
+  }
+
+  /* Collapse page chrome so badge can sit at the top */
+  .dash,
+  .dash-main,
+  .page-panel,
+  .id-card-page,
+  .id-card-layout,
+  .id-card-studio,
+  .step-card,
+  .qr-design-panel {
+    display: block !important;
+    position: static !important;
+    width: auto !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    min-height: 0 !important;
+    height: auto !important;
+    overflow: visible !important;
+    grid-template-columns: none !important;
+  }
+
+  .id-badge {
+    position: fixed !important;
+    left: 50% !important;
+    top: 6mm !important;
+    right: auto !important;
+    bottom: auto !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    border: 1px solid #cbd5e1 !important;
+    background: #fff !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+    /* Keep design proportions, then enlarge to fill the page */
+    transform-origin: top center !important;
+  }
+
+  .id-badge-layout--portrait {
+    width: 70mm !important;
+    transform: translateX(-50%) scale(2.45) !important;
+  }
+  .id-badge-layout--landscape {
+    width: 140mm !important;
+    transform: translateX(-50%) scale(1.25) !important;
+  }
+  .id-badge-layout--strip {
+    width: 150mm !important;
+    transform: translateX(-50%) scale(1.2) !important;
+  }
+  .id-badge-layout--split {
+    width: 85mm !important;
+    transform: translateX(-50%) scale(2) !important;
   }
 }

@@ -267,33 +267,57 @@ function activityLabel(iso, scanCount) {
   return { label: 'Quiet', tone: 'quiet' };
 }
 
+function smoothLinePath(coords) {
+  if (!coords.length) return '';
+  if (coords.length === 1) {
+    return `M ${coords[0].x.toFixed(1)} ${coords[0].y.toFixed(1)}`;
+  }
+  let d = `M ${coords[0].x.toFixed(1)} ${coords[0].y.toFixed(1)}`;
+  for (let i = 0; i < coords.length - 1; i += 1) {
+    const c0 = coords[i === 0 ? i : i - 1];
+    const c1 = coords[i];
+    const c2 = coords[i + 1];
+    const c3 = coords[i + 2] || c2;
+    const cp1x = c1.x + (c2.x - c0.x) / 6;
+    const cp1y = c1.y + (c2.y - c0.y) / 6;
+    const cp2x = c2.x - (c3.x - c1.x) / 6;
+    const cp2y = c2.y - (c3.y - c1.y) / 6;
+    d += ` C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)}, ${cp2x.toFixed(1)} ${cp2y.toFixed(1)}, ${c2.x.toFixed(1)} ${c2.y.toFixed(1)}`;
+  }
+  return d;
+}
+
 function ActivityLineChart({ series }) {
   const points = Array.isArray(series) && series.length ? series : [];
   const width = 560;
-  const height = 220;
-  const padX = 36;
-  const padY = 24;
+  const height = 240;
+  const padX = 44;
+  const padTop = 18;
+  const padBottom = 32;
   const maxY = Math.max(5, ...points.map((p) => Number(p.count) || 0));
   const step = Math.ceil(maxY / 4) || 1;
   const top = step * 4;
   const innerW = width - padX * 2;
-  const innerH = height - padY * 2;
+  const innerH = height - padTop - padBottom;
+  const baseline = padTop + innerH;
   const coords = points.map((p, i) => {
     const x =
       points.length <= 1
         ? padX + innerW / 2
         : padX + (i / (points.length - 1)) * innerW;
-    const y = padY + innerH - ((Number(p.count) || 0) / top) * innerH;
+    const y = padTop + innerH - ((Number(p.count) || 0) / top) * innerH;
     return { x, y, label: p.label || '', count: Number(p.count) || 0 };
   });
-  const path = coords
-    .map((c, i) => `${i === 0 ? 'M' : 'L'} ${c.x.toFixed(1)} ${c.y.toFixed(1)}`)
-    .join(' ');
+  const linePath = smoothLinePath(coords);
+  const areaPath = linePath
+    ? `${linePath} L ${coords[coords.length - 1].x.toFixed(1)} ${baseline} L ${coords[0].x.toFixed(1)} ${baseline} Z`
+    : '';
   const grid = [0, 1, 2, 3, 4].map((i) => {
-    const y = padY + (innerH * i) / 4;
+    const y = padTop + (innerH * i) / 4;
     const value = top - step * i;
     return { y, value };
   });
+  const gradId = 'dashScanAreaFill';
 
   return (
     <div className="dash-overview-chart-wrap">
@@ -303,6 +327,13 @@ function ActivityLineChart({ series }) {
         role="img"
         aria-label="Weekly scan activity"
       >
+        <defs>
+          <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#4a6cf7" stopOpacity="0.28" />
+            <stop offset="55%" stopColor="#4a6cf7" stopOpacity="0.1" />
+            <stop offset="100%" stopColor="#4a6cf7" stopOpacity="0" />
+          </linearGradient>
+        </defs>
         {grid.map((g) => (
           <g key={`g-${g.value}`}>
             <line
@@ -317,14 +348,18 @@ function ActivityLineChart({ series }) {
             </text>
           </g>
         ))}
-        {path ? <path d={path} className="dash-chart-line" fill="none" /> : null}
+        {areaPath ? <path d={areaPath} className="dash-chart-area" fill={`url(#${gradId})`} /> : null}
+        {linePath ? <path d={linePath} className="dash-chart-line" fill="none" /> : null}
         {coords.map((c) => (
-          <g key={`${c.label}-${c.x}`}>
-            <circle cx={c.x} cy={c.y} r="4.5" className="dash-chart-dot" />
-            <text x={c.x} y={height - 4} textAnchor="middle" className="dash-chart-axis">
-              {c.label}
-            </text>
-          </g>
+          <text
+            key={`${c.label}-${c.x}`}
+            x={c.x}
+            y={height - 8}
+            textAnchor="middle"
+            className="dash-chart-axis"
+          >
+            {c.label}
+          </text>
         ))}
       </svg>
     </div>
